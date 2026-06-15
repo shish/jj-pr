@@ -80,7 +80,7 @@ def list(
 @app.command("pre-commit")
 def pre_commit_command(
     ctx: typer.Context,
-    ref: Optional[str] = typer.Option(None, "--ref", help="Ref to check"),
+    ref: Optional[str] = typer.Argument(None, help="Ref to check"),
 ) -> None:
     """Run pre-commit hooks."""
     opts: GlobalOptions = ctx.obj
