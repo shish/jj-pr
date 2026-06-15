@@ -1,4 +1,5 @@
 import logging
+import subprocess
 from contextlib import contextmanager
 
 from . import utils
@@ -29,6 +30,8 @@ def run(*args: str, dry_run: bool = False) -> str:
     """
     try:
         return utils.run(["jj"] + list(args), dry_run=dry_run)
+    except subprocess.CalledProcessError as e:
+        raise JjError(f"jj command failed: {' '.join(args)}\n{e.stderr}") from e
     except Exception as e:
         if isinstance(e, JjError):
             raise
