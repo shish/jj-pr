@@ -27,6 +27,13 @@ def main(
     """Unified CLI for multiple code review forges."""
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
 
+    try:
+        jj_root = jj.run("root")
+        os.chdir(jj_root)
+    except jj.JjError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+
     ctx.obj = GlobalOptions(forge=forge, remote=remote)
 
 
