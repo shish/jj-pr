@@ -38,17 +38,8 @@ class GitHubForge(Forge):
             pr_branch = branches[-1]
             log.info(f"Found existing PR branch: {pr_branch}")
             with jj.with_new(changes[-1]):
-                jj.run("bookmark", "advance", pr_branch, "--to", changes[-1])
-                utils.run(
-                    [
-                        "git",
-                        "push",
-                        "--force",
-                        self.remote,
-                        f"{pr_branch}:{pr_branch}",
-                        "--force-with-lease",
-                    ],
-                )
+                jj.run("bookmark", "advance", pr_branch)
+                jj.run("git", "push", "--remote", self.remote, "--bookmark", pr_branch)
         else:
             description = jj.description_of(changes[-1])
             if not description:
@@ -58,8 +49,8 @@ class GitHubForge(Forge):
             pr_branch = f"pr/{sanitized_title}"
             log.info(f"Creating new PR branch: {pr_branch}")
             with jj.with_new(changes[-1]):
-                utils.run(["git", "checkout", "-b", pr_branch])
-                utils.run(["git", "push", self.remote, f"{pr_branch}:{pr_branch}"])
+                jj.run("bookmark", "create", pr_branch)
+                jj.run("git", "push", "--remote", self.remote, "--bookmark", pr_branch)
                 base = utils.get_merge_target()
                 utils.run(["gh", "pr", "create", "--fill", "--base", base])
 
