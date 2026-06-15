@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI for jj utilities using Typer."""
+"""Interactive testing library for jj.py"""
 
 import logging
 
@@ -9,7 +9,7 @@ from . import jj
 
 log = logging.getLogger(__name__)
 
-app = typer.Typer(help="Utilities for working with jj (Jujutsu) version control")
+app = typer.Typer(help=__doc__)
 
 
 @app.callback(invoke_without_command=False)

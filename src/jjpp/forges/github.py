@@ -90,7 +90,7 @@ class GitHubForge(Forge):
                     identifier=str(pr["number"]),
                     title=pr["title"],
                     url=pr["url"],
-                    extra=f"[{pr['state']}]",
+                    extra={"state": pr["state"]},
                 )
             )
         self.display_list(crs)

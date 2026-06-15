@@ -132,7 +132,7 @@ class GerritForge(Forge):
                     identifier=str(number),
                     title=subject,
                     url=change_url,
-                    extra=f"[{status}]{blocker_str}",
+                    extra={"status": status, "blockers": blocker_str},
                 )
             )
 

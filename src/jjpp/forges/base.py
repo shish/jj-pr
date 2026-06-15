@@ -5,6 +5,9 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional
 
+from rich.console import Console
+from rich.table import Table
+
 from .. import jj, utils
 
 log = logging.getLogger(__name__)
@@ -18,12 +21,12 @@ class CRListItem:
         identifier: str,
         title: str,
         url: Optional[str],
-        extra: Optional[str] = None,
+        extra: Optional[dict] = None,
     ):
         self.identifier = identifier
         self.title = title
         self.url = url
-        self.extra = extra
+        self.extra = extra or {}
 
     def __str__(self) -> str:
         title_link = utils.hyperlink(self.url, self.title) if self.url else self.title
@@ -85,6 +88,23 @@ class Forge(ABC):
         if not items:
             print("No items found on the forge")
             return
-        print("Items on the forge:")
+
+        console = Console()
+        table = Table(title="Items on the forge")
+        table.add_column("ID", style="cyan")
+        table.add_column("Title", style="magenta")
+        table.add_column("Extra", style="yellow")
+
         for item in items:
-            print(f"  {item}")
+            if item.url:
+                title_link = f"[link={item.url}]{item.title}[/link]"
+            else:
+                title_link = item.title
+            extra_str = " ".join(f"{k}: {v}" for k, v in item.extra.items())
+            table.add_row(
+                item.identifier,
+                title_link,
+                extra_str,
+            )
+
+        console.print(table)
