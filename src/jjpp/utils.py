@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import typer
 
 from .cli import GlobalOptions
-from .forges import Forge, GerritForge, GitHubForge, PhabricatorForge
+from .forges import Forge, Gerrit, GitHub, Phabricator
 
 log = logging.getLogger(__name__)
 
@@ -113,11 +113,11 @@ def get_forge(forge: Optional[str], remote: str) -> Optional[Forge]:
             return None
 
         if forge == "github":
-            return GitHubForge(remote, remote_url)
+            return GitHub(remote, remote_url)
         elif forge == "phabricator":
-            return PhabricatorForge(remote, remote_url)
+            return Phabricator(remote, remote_url)
         elif forge == "gerrit":
-            return GerritForge(remote, remote_url)
+            return Gerrit(remote, remote_url)
 
     # Auto-detect from remote URL
     remote_url = get_git_remote_url(remote)
@@ -139,11 +139,11 @@ def get_forge(forge: Optional[str], remote: str) -> Optional[Forge]:
         return None
 
     if detected_forge == "github":
-        return GitHubForge(remote, remote_url)
+        return GitHub(remote, remote_url)
     elif detected_forge == "phabricator":
-        return PhabricatorForge(remote, remote_url)
+        return Phabricator(remote, remote_url)
     elif detected_forge == "gerrit":
-        return GerritForge(remote, remote_url)
+        return Gerrit(remote, remote_url)
 
     return None
 

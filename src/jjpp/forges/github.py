@@ -9,7 +9,7 @@ from .base import CRListItem, Forge
 log = logging.getLogger(__name__)
 
 
-class GitHubForge(Forge):
+class GitHub(Forge):
     def push(self, ref: Optional[str]) -> None:
         changes = (
             [jj.revset_to_changeid(ref)]

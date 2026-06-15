@@ -7,7 +7,7 @@ from .base import Forge
 log = logging.getLogger(__name__)
 
 
-class PhabricatorForge(Forge):
+class Phabricator(Forge):
     def push(self, ref: Optional[str]) -> None:
         changes = (
             [jj.revset_to_changeid(ref)]
