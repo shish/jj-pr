@@ -10,7 +10,7 @@ from .base import CRListItem, Forge
 log = logging.getLogger(__name__)
 
 
-class GerritForge(Forge):
+class Gerrit(Forge):
     @property
     def gerrit_url(self) -> str:
         """Extract the Gerrit API base URL from remote_url.

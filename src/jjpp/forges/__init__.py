@@ -1,11 +1,11 @@
 from .base import Forge
-from .gerrit import GerritForge
-from .github import GitHubForge
-from .phabricator import PhabricatorForge
+from .gerrit import Gerrit
+from .github import GitHub
+from .phabricator import Phabricator
 
 __all__ = [
     "Forge",
-    "GitHubForge",
-    "PhabricatorForge",
-    "GerritForge",
+    "GitHub",
+    "Phabricator",
+    "Gerrit",
 ]
