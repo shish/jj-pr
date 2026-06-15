@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
-from .. import jj
+from .. import jj, utils
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class Forge(ABC):
         self.remote_url = remote_url
 
     @abstractmethod
-    def push(self, ref: Optional[str], pre_commit: bool) -> None:
+    def push(self, ref: Optional[str]) -> None:
         """Push changes to the forge."""
         pass
 
@@ -35,6 +35,22 @@ class Forge(ABC):
     def list(self) -> None:
         """List items on the forge."""
         pass
+
+    def pre_commit_stack(self, ref: Optional[str]) -> None:
+        if not Path(".git/hooks/pre-commit").exists():
+            log.info("No .git/hooks/pre-commit found, skipping pre-commit hooks")
+            return
+        changes = (
+            [jj.revset_to_changeid(ref)]
+            if ref
+            else jj.current_stack(require_description=False)
+        )
+        log.info("Pre-commit checking all changes in the stack")
+        for change_id in changes:
+            try:
+                self.pre_commit(change_id)
+            except Exception:
+                raise utils.UserError(f"Pre-commit failed for change {change_id}")
 
     def pre_commit(self, change_id: jj.ChangeID) -> None:
         if not Path(".git/hooks/pre-commit").exists():

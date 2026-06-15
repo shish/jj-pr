@@ -1,10 +1,11 @@
 import logging
 import os
+import sys
 from typing import Optional
 
 import typer
 
-from . import jj
+from . import jj, utils
 from .cli import GlobalOptions
 from .utils import get_forge_or_die
 
@@ -51,7 +52,9 @@ def push(
     """Push changes to the forge."""
     opts: GlobalOptions = ctx.obj
     f = get_forge_or_die(opts)
-    f.push(ref, pre_commit)
+    if pre_commit:
+        f.pre_commit_stack(ref)
+    f.push(ref)
 
 
 @app.command()
@@ -83,13 +86,7 @@ def pre_commit_command(
     """Run pre-commit hooks."""
     opts: GlobalOptions = ctx.obj
     f = get_forge_or_die(opts)
-    changes = (
-        [jj.revset_to_changeid(ref)]
-        if ref
-        else jj.current_stack(require_description=False)
-    )
-    for change_id in changes:
-        f.pre_commit(change_id)
+    f.pre_commit_stack(ref)
 
 
 @app.command("pull")
@@ -112,4 +109,8 @@ def pull_command(
 
 def run() -> None:
     """Entry point for the CLI application."""
-    app()
+    try:
+        app()
+    except utils.UserError as e:
+        typer.echo(f"Error: {e}", err=True)
+        sys.exit(1)

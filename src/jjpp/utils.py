@@ -11,6 +11,12 @@ from .forges import Forge, GerritForge, GitHubForge, PhabricatorForge
 log = logging.getLogger(__name__)
 
 
+class UserError(Exception):
+    """Exception raised for user errors (no stack trace)."""
+
+    pass
+
+
 def run(cmd: list[str], dry_run: bool = False) -> str:
     """Run a command and return stdout.
 

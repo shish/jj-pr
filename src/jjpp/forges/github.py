@@ -10,20 +10,12 @@ log = logging.getLogger(__name__)
 
 
 class GitHubForge(Forge):
-    def push(self, ref: Optional[str], pre_commit: bool) -> None:
+    def push(self, ref: Optional[str]) -> None:
         changes = (
             [jj.revset_to_changeid(ref)]
             if ref
             else jj.current_stack(require_description=True)
         )
-        if pre_commit:
-            log.info("Pre-commit checking all changes in the stack")
-            for change_id in changes:
-                try:
-                    self.pre_commit(change_id)
-                except Exception:
-                    log.error(f"Pre-commit failed for change {change_id}")
-                    return
 
         # if a change between the base and current change has
         # a branch name that starts with "pr/":
