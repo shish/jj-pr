@@ -19,8 +19,8 @@ class PhabricatorForge(Forge):
                 log.warning(f"[TODO] Pushing {change_id}")
                 # jj.run('gerrit', 'push', '-r', change_id)
 
-    def pull(self, identifier: Optional[str] = None) -> None:
-        log.warning("[TODO] Pull diff")
+    def checkout(self, identifier: Optional[str] = None) -> None:
+        log.warning("[TODO] Checkout diff")
         if identifier:
             log.warning(f"  Diff ID: {identifier}")
 

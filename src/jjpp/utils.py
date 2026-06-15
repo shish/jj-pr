@@ -31,18 +31,13 @@ def run(cmd: list[str], dry_run: bool = False) -> str:
     else:
         log.debug(f"Executing command: {' '.join(cmd)}")
 
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        raise e
-    except FileNotFoundError as e:
-        raise e
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.strip()
 
 
 def get_merge_target(remote: str = "origin") -> str:

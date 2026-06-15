@@ -55,14 +55,14 @@ def push(
 
 
 @app.command()
-def pull(
+def checkout(
     ctx: typer.Context,
     identifier: Optional[str] = typer.Argument(None, help="PR/Diff/CR ID"),
 ) -> None:
-    """Pull changes from the forge."""
+    """Checkout changes from the forge."""
     opts: GlobalOptions = ctx.obj
     f = get_forge_or_die(opts)
-    f.pull(identifier)
+    f.checkout(identifier)
 
 
 @app.command()
@@ -92,12 +92,22 @@ def pre_commit_command(
         f.pre_commit(change_id)
 
 
-@app.command("sync")
-def sync_command(ctx: typer.Context) -> None:
+@app.command("pull")
+def pull_command(
+    ctx: typer.Context,
+    all: bool = typer.Option(
+        False,
+        "--all",
+        help="Rebase all local branches; if not set, only rebase the current branch",
+    ),
+) -> None:
     """Pull from remote and rebase local branches"""
     opts: GlobalOptions = ctx.obj
     jj.run("git", "fetch", "--remote", opts.remote)
-    jj.run("rebase", "--skip-emptied", "-d", "trunk()", "-r", "mutable()")
+    if all:
+        jj.run("rebase", "--skip-emptied", "-d", "trunk()", "-r", "mutable()")
+    else:
+        jj.run("rebase", "--skip-emptied", "-d", "trunk()", "-r", "trunk()..@")
 
 
 def run() -> None:

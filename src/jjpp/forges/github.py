@@ -68,9 +68,9 @@ class GitHubForge(Forge):
                     ]
                 )
 
-    def pull(self, identifier: Optional[str] = None) -> None:
+    def checkout(self, identifier: Optional[str] = None) -> None:
         if not identifier:
-            raise ValueError("Pulling a PR requires an identifier (PR number)")
+            raise ValueError("Checking out a PR requires an identifier (PR number)")
         utils.run(
             [
                 "gh",
