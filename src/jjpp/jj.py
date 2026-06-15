@@ -1,5 +1,8 @@
+import logging
 import subprocess
 from contextlib import contextmanager
+
+log = logging.getLogger(__name__)
 
 # Type aliases
 ChangeID = str
@@ -59,6 +62,18 @@ def change_parents(change_id: ChangeID) -> list[ChangeID]:
     return [p for p in output.split("\n") if p]
 
 
+def files_in(change_id: ChangeID) -> list[str]:
+    output = run(
+        "log",
+        "-r",
+        change_id,
+        "--no-graph",
+        "-T",
+        "self.diff().files().map(|f| f.path()).join('\n')",
+    )
+    return [f for f in output.split("\n") if f]
+
+
 @contextmanager
 def with_edit(rev: RevSet):
     """Context manager to temporarily switch to a change and reset on exit.
@@ -71,16 +86,20 @@ def with_edit(rev: RevSet):
     target_change_id = revset_to_changeid(rev)
 
     if original_change_id == target_change_id:
+        log.debug(f"Already on target change {target_change_id}, no edit needed.")
         yield
         return
 
-    status_output = run("status")
-    is_empty = "No commits in working copy" in status_output
+    is_empty = files_in(original_change_id) == []
     try:
+        log.debug(f"Switching from change {original_change_id} to {target_change_id}.")
         run("edit", target_change_id)
         yield
     finally:
         if is_empty:
             run("new", *original_parents)
+            log.debug(f"Creating new empty change with parents {original_parents}.")
+            run("new", *original_parents)
         else:
+            log.debug(f"Resetting back to original change {original_change_id}.")
             run("edit", original_change_id)

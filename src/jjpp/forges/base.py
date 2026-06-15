@@ -1,5 +1,13 @@
+import logging
+import shlex
+import subprocess
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional
+
+from .. import jj
+
+log = logging.getLogger(__name__)
 
 
 class ForgeException(Exception):
@@ -27,6 +35,11 @@ class Forge(ABC):
         """List items on the forge."""
         pass
 
-    def pre_commit(self, ref: str) -> None:
-        """Run pre-commit hooks."""
-        pass
+    def pre_commit(self, change_id: jj.ChangeID) -> None:
+        if not Path(".git/hooks/pre-commit").exists():
+            log.info("No .git/hooks/pre-commit found, skipping pre-commit hooks")
+            return
+        with jj.with_edit(change_id):
+            files = jj.files_in(change_id)
+            log.info(f"Running pre-commit on {change_id} ({shlex.join(files)})")
+            subprocess.run(["pre-commit", "run", "--files", *files], check=True)
