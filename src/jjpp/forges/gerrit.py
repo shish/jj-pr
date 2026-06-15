@@ -34,57 +34,33 @@ class Gerrit(Forge):
         raise ValueError(f"Cannot parse Gerrit URL from remote: {self.remote_url}")
 
     def push(self, ref: Optional[str]) -> None:
-        changes = (
-            [jj.revset_to_changeid(ref)]
-            if ref
-            else jj.current_stack(require_description=True)
-        )
-        for change_id in changes:
-            with jj.with_edit(change_id):
-                log.info(f"Pushing change {change_id} to Gerrit")
-                # Push to refs/for/main which creates a change in Gerrit
-                # jj.run("git", "push", "-u", self.remote, "HEAD:refs/for/main")
-                jj.run("gerrit", "upload", "-r", change_id)
+        if ref:
+            change_id = jj.revset_to_changeid(ref)
+            jj.run("gerrit", "upload", "-r", f"{change_id}::{change_id}")
+        else:
+            jj.run("gerrit", "upload", "-r", jj.closest_work())
 
     def checkout(self, identifier: str) -> None:
-        """Checkout a Gerrit change by change number or change ID.
-
-        Args:
-            identifier: Gerrit change number (e.g., "12345") or change ID.
-        """
         log.info(f"Fetching Gerrit change {identifier}")
-        try:
-            # Query API to get the latest patch set number
-            url = f"{self.gerrit_url}/a/changes/{identifier}?o=CURRENT_REVISION"
-            with urlopen(url) as response:
-                result = response.read().decode("utf-8")
-            # Gerrit API returns a magic prefix that needs to be stripped
-            if result.startswith(")]}'"):
-                result = result[5:]
-            change_data = json.loads(result)
+        # Query API to get the latest patch set number
+        url = f"{self.gerrit_url}/a/changes/{identifier}?o=CURRENT_REVISION"
+        with urlopen(url) as response:
+            result = response.read().decode("utf-8")
+        # Gerrit API returns a magic prefix that needs to be stripped
+        if result.startswith(")]}'"):
+            result = result[5:]
+        change_data = json.loads(result)
 
-            # Get the latest patch set revision
-            current_revision = change_data.get("current_revision")
-            if not current_revision:
-                log.error(
-                    f"Could not determine current revision for change {identifier}"
-                )
-                return
+        # Get the latest patch set revision
+        current_rev = change_data.get("current_revision")
+        if not current_rev:
+            log.error(f"Could not determine current revision for change {identifier}")
+            return
 
-            # Fetch the latest patch set
-            utils.run(
-                [
-                    "git",
-                    "fetch",
-                    self.remote,
-                    f"{current_revision}:refs/remotes/{self.remote}/change-{identifier}",
-                ]
-            )
-            utils.run(
-                ["git", "checkout", f"refs/remotes/{self.remote}/change-{identifier}"]
-            )
-        except Exception as e:
-            log.error(f"Failed to checkout change {identifier}: {e}")
+        # Fetch the latest patch set
+        remote_id = f"refs/remotes/{self.remote}/change-{identifier}"
+        utils.run(["git", "fetch", self.remote, f"{current_rev}:{remote_id}"])
+        utils.run(["git", "checkout", remote_id])
 
     def list(self) -> None:
         """List the user's open changes in Gerrit, showing any blockers."""
