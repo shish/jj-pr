@@ -29,10 +29,6 @@ class CRListItem:
         self.url = url
         self.extra = extra or {}
 
-    def __str__(self) -> str:
-        title_link = utils.hyperlink(self.url, self.title) if self.url else self.title
-        return f"{self.identifier}: {title_link} {self.extra}".strip()
-
 
 class ForgeException(Exception):
     """Base exception for forge-related errors."""
@@ -48,17 +44,14 @@ class Forge(ABC):
     @abstractmethod
     def push(self, ref: Optional[str]) -> None:
         """Push changes to the forge."""
-        pass
 
     @abstractmethod
     def checkout(self, identifier: str) -> None:
         """Checkout changes from the forge."""
-        pass
 
     @abstractmethod
     def list(self) -> None:
         """List items on the forge."""
-        pass
 
     def pre_commit_stack(self, ref: Optional[str]) -> None:
         if not Path(".git/hooks/pre-commit").exists():

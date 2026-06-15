@@ -32,10 +32,6 @@ def run(*args: str, dry_run: bool = False) -> str:
         return utils.run(["jj"] + list(args), dry_run=dry_run)
     except subprocess.CalledProcessError as e:
         raise JjError(f"jj command failed: {' '.join(args)}\n{e.stderr}") from e
-    except Exception as e:
-        if isinstance(e, JjError):
-            raise
-        raise JjError(f"jj command failed: {' '.join(args)}") from e
 
 
 def revset_to_changeid(revset: RevSet) -> ChangeID:
@@ -118,29 +114,31 @@ def with_edit(rev: RevSet, new: bool = False):
     If the target ref is already the current commit, does nothing.
     If the current change is empty, creates a new empty commit with the same parent.
     """
-    original_change_id = revset_to_changeid("@")
-    original_parents = change_parents(original_change_id)
-    target_change_id = revset_to_changeid(rev)
+    orig_change_id = revset_to_changeid("@")
+    orig_parents = change_parents(orig_change_id)
+    targ_change_id = revset_to_changeid(rev)
 
-    if original_change_id == target_change_id:
-        log.debug(f"Already on target change {target_change_id}, no edit needed.")
+    if not new and orig_change_id == targ_change_id:
+        log.debug(f"Already on target change {targ_change_id}, no edit needed.")
         yield
         return
 
-    is_empty = files_in(original_change_id) == []
+    is_empty = files_in(orig_change_id) == []
     try:
-        log.debug(f"Switching from change {original_change_id} to {target_change_id}.")
-        run("new" if new else "edit", target_change_id)
+        co = "child of " if new else ""
+        log.debug(f"Switching from {orig_change_id} to {co}{targ_change_id}.")
+        run("new" if new else "edit", targ_change_id)
         yield
     finally:
         if is_empty:
-            log.debug(f"Creating new empty change with parents {original_parents}.")
-            run("new", *original_parents)
+            log.debug(f"Resetting to empty change with parents {orig_parents}.")
+            run("new", *orig_parents)
         else:
-            log.debug(f"Resetting back to original change {original_change_id}.")
-            run("edit", original_change_id)
+            log.debug(f"Resetting back to original change {orig_change_id}.")
+            run("edit", orig_change_id)
 
 
 @contextmanager
 def with_new(rev: RevSet):
-    yield with_edit(rev, new=True)
+    with with_edit(rev, new=True):
+        yield

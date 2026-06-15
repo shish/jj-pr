@@ -15,14 +15,21 @@ dependencies = [
 
 [project.scripts]
 jjpp = "jjpp.main:run"
-_test_jjpy = "jjpp.jj_cli:main"
 
 [dependency-groups]
 dev = [
     "prek>=0.4.5",
+    "pytest>=9.1.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.8.0",
     "ruff>=0.1.0",
     "ty>=0.0.49",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/jjpp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/"]
+python_files = ["*.py"]
+addopts = "--cov=jjpp --cov-report=term-missing"

@@ -5,7 +5,7 @@ import logging
 
 import typer
 
-from . import jj
+from jjpp import jj
 
 log = logging.getLogger(__name__)
 

@@ -6,8 +6,7 @@ from typing import Optional
 import typer
 
 from . import jj, utils
-from .forges import Forge
-from .utils import get_forge
+from .forges import Forge, get_forge
 
 app = typer.Typer(help="Unified CLI for multiple code review forges")
 log = logging.getLogger(__name__)
