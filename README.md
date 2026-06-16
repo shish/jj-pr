@@ -4,7 +4,6 @@ Because I'm regularly using github, gerrit, and phabricator, and I don't like an
 
 I really just want `jj pull` to bring me up to date with remote changes, and `jj push` to push my local changes for review - automatically Doing The Right Thing (eg updating existing reviews vs creating new ones), working consistently across forges.
 
-
 ## Features
 
 * `jjpp pull` - pull remote trunk and rebase local stack on top of it
@@ -15,11 +14,11 @@ I really just want `jj pull` to bring me up to date with remote changes, and `jj
   * gerrit & phabricator create a review for each commit in the stack
   * github will create a new `pr/XYZ` branch, send that branch for review, and update that branch on subsequent pushes
   * `jjpp push <change id>` - push an individual commit
-* `jjpp list` - list my open PR/CR/Diffs
+* `jjpp list` - list open PR/CR/Diffs for the current project
+  * `jjpp list --all-projects` - list open CRs/Diffs for all projects on the forge 
 * `jjpp pre-commit` - run pre-commit hooks on all commits in the current stack
   * `jjpp pre-commit <change id>` - run pre-commit hooks on a specific change
 * `jjpp checkout <pr/cr/diff>` - pull a specific PR/CR/Diff from the forge
-
 
 ## Workflow
 
@@ -28,25 +27,31 @@ will call `jjpp push`, etc. From there, my workflow is usually:
 
 * `jj pull --all` - start the day by pulling remote changes and rebasing all my local stacks on top of them
 * `jj list` - check for any reviews which need attention
-* If any of my code needs to be changed based on feedback
-  * `jj edit <change id>` - switch to the change that needs to be updated
-  * `vim ...` - make the changes
-  * `jj push` - push an updated version of the commit for review
-* If I want to work on a new feature
-  * `jj new <base>` - create a new branch for the feature ("base" is usually `main` or `master`)
-  * `vim ...` - make the changes
-  * `jj describe` - set commit title and description
-  * `jj push` - push the new branch for review
-* If I want to test somebody else's code
-  * `jj checkout <pr/cr/diff>` - pull a specific PR/CR/Diff from the forge
 
+### If I want to work on a new feature
+
+* `jj new <base>` - create a new branch for the feature ("base" is usually `main` or `master`)
+* `vim ...` - make some changes
+* `jj commit` - commit the first unit of work
+* `vim ...` - make more changes
+* `jj commit` - commit the next unit of work
+* `jj push` - push the two commits for review
+
+### If any of my code needs to be changed based on feedback
+
+* `jj edit <change id>` - switch to the change that needs to be updated
+* `vim ...` - make the changes
+* `jj push -m 'fixed the bugs'` - push an updated version of the commit for review, with a comment listing what changed since last time
+
+#### If I want to test somebody else's code
+
+* `jj checkout <pr/cr/diff>` - pull a specific PR/CR/Diff from the forge
 
 ## Backend Notes
 
 * `github` - requires `gh` CLI to be installed and configured
-* `gerrit` - requires an API token to be set
+* `gerrit` - requires an API token to be set in `~/.netrc`
 * `phabricator` - requires `arc` CLI to be installed and configured
-
 
 ## Install
 
@@ -59,6 +64,7 @@ uv run pre-commit install                      # if you want to be editing jjpp 
 ```
 
 `~/.config/jj/config.toml`:
+
 ```toml
 [aliases]
 push       = ["util", "exec", "--", "jjpp", "push"]
