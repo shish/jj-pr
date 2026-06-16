@@ -22,6 +22,8 @@ class Phabricator(Forge):
     def checkout(self, identifier: str) -> None:
         log.warning(f"[TODO] Checkout diff {identifier}")
 
-    def list(self) -> List[CRListItem]:
-        log.warning("[TODO] Listing diffs")
+    def list(self, all_projects: bool = False) -> List[CRListItem]:
+        log.warning(
+            f"Listing diffs for {self.remote_url} ({'*' if all_projects else self.project_id})"
+        )
         return []

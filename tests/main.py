@@ -31,8 +31,8 @@ def dummy_cr_list_items() -> List[CRListItem]:
 
 
 class TestBase:
-    def test_display_list(self, dummy_cr_list_items: list[CRListItem]):
-        _display_list(dummy_cr_list_items)
+    def test_display_list_multi(self, dummy_cr_list_items: list[CRListItem]):
+        _display_list(dummy_cr_list_items, multi=True)
 
     def test_display_list_empty(self):
-        _display_list([])
+        _display_list([], multi=False)
