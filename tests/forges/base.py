@@ -14,7 +14,7 @@ class DummyForge(Forge):
     def checkout(self, identifier: str) -> None:
         log.info(f"DummyForge: checkout called with identifier={identifier}")
 
-    def list(self) -> list[CRListItem]:
+    def list(self, all_projects: bool = False) -> list[CRListItem]:
         log.info("DummyForge: list called")
         return []
 

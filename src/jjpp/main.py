@@ -112,24 +112,35 @@ def checkout_command(
         r.forge.checkout(identifier)
 
 
-def _display_list(items: List[CRListItem]) -> None:
+def _display_list(items: List[CRListItem], multi: bool) -> None:
     """Display a list of code review items in a formatted table."""
     console = Console()
 
+    all_forge_urls = set(item.forge_url for item in items)
     all_extra_keys = set()
     for item in items:
         all_extra_keys.update(item.extra.keys())
 
     table = Table()
+    if len(all_forge_urls) > 1:
+        table.add_column("Forge", style="green")
+    if multi:
+        table.add_column("Project", style="blue")
     table.add_column("ID", style="cyan")
     table.add_column("Title", style="magenta")
     for key in sorted(all_extra_keys):
         table.add_column(key.title(), style="yellow")
 
     for item in items:
+        row = []
+        if len(all_forge_urls) > 1:
+            row.append(f"[link={item.forge_url}]{item.forge_name}[/link]")
+        if multi:
+            row.append(item.project_id)
+        row.append(item.identifier)
+        row.append(f"[link={item.url}]{item.title}[/link]")
         table.add_row(
-            item.identifier,
-            f"[link={item.url}]{item.title}[/link]",
+            *row,
             *[
                 item.extra[key] if key in item.extra else ""
                 for key in sorted(all_extra_keys)
@@ -142,16 +153,22 @@ def _display_list(items: List[CRListItem]) -> None:
 @app.command("list")
 def list_command(
     ctx: typer.Context,
+    all_projects: bool = typer.Option(
+        False,
+        "--all-projects",
+        help="List reviews for all projects on the forge",
+    ),
 ) -> None:
     """List items on the forge."""
     opts: GlobalOptions = ctx.obj
-    r = opts.repo
-    with r.with_chdir():
-        items = r.forge.list()
-        if items:
-            _display_list(items)
-        else:
-            print("No items found.")
+    items = []
+    for r in opts.repos:
+        with r.with_chdir():
+            items.extend(r.forge.list(all_projects))
+    if items:
+        _display_list(items, multi=all_projects)
+    else:
+        print("No items found.")
 
 
 def _pre_commit_stack(ref: Optional[str]) -> None:

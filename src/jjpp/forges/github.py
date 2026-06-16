@@ -73,8 +73,12 @@ class GitHub(Forge):
             ]
         )
 
-    def list(self) -> list[CRListItem]:
-        log.info(f"Listing PRs for {self.remote_url}")
+    def list(self, all_projects: bool = False) -> list[CRListItem]:
+        if all_projects:
+            log.warning("Listing PRs for all projects is not supported for GitHub.")
+        log.info(
+            f"Listing PRs for {self.remote_url} ({'*' if all_projects else self.project_id})"
+        )
         cmd = [
             "gh",
             "pr",

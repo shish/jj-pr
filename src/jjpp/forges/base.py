@@ -92,5 +92,5 @@ class Forge(ABC):
         """Checkout changes from the forge."""
 
     @abstractmethod
-    def list(self) -> List[CRListItem]:
+    def list(self, all_projects: bool = False) -> List[CRListItem]:
         """List items on the forge, returning a list of CRListItem objects."""

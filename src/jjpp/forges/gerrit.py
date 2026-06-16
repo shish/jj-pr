@@ -41,13 +41,18 @@ class Gerrit(Forge):
         utils.run(["git", "fetch", self.remote, f"{current_rev}:{remote_id}"])
         utils.run(["git", "checkout", remote_id])
 
-    def list(self) -> List[CRListItem]:
+    def list(self, all_projects: bool = False) -> List[CRListItem]:
         """List the user's open changes in Gerrit, showing any blockers."""
-        log.info(f"Listing open changes from {self.forge_url}")
+        log.info(
+            f"Listing open changes from {self.forge_url} ({'*' if all_projects else self.project_id})"
+        )
         # Query Gerrit REST API for current user's open changes
         # 'owner:self' filters to current user, 'status:open' shows only open changes
         # DETAILED_LABELS shows reviewer votes and blocking votes
-        url = f"{self.forge_url}/a/changes/?q=owner:self+status:open&o=DETAILED_LABELS&o=MESSAGES"
+        query = "owner:self+status:open"
+        if not all_projects:
+            query += f"+project:{self.project_id}"
+        url = f"{self.forge_url}/a/changes/?q={query}&o=DETAILED_LABELS&o=MESSAGES"
         with urlopen(url) as response:
             result = response.read().decode("utf-8")
         # Gerrit API returns a magic prefix that needs to be stripped
