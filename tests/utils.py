@@ -24,6 +24,11 @@ class TestRun:
         output = utils.run(["echo", "test output"])
         assert "test output" in output
 
+    def test_run_skipping_output(self):
+        """Test command that produces output."""
+        output = utils.run(["echo", "test output"], cap=False)
+        assert output is None
+
     def test_run_command_failure_raises_error(self):
         """Test that failed commands raise CalledProcessError."""
         with pytest.raises(subprocess.CalledProcessError):
