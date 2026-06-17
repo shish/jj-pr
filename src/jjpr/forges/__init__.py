@@ -26,7 +26,7 @@ def detect_forge_from_url(url: str) -> Optional[ForgeName]:
 
     if "github.com" in domain:
         return "github"
-    elif "phabricator" in domain:
+    elif "phab" in domain:
         return "phabricator"
     elif "gerrit" in domain:
         return "gerrit"
