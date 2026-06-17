@@ -133,9 +133,19 @@ class Phabricator(Forge):
                 identifier=str(rev["id"]),
                 title=rev["fields"]["title"],
                 url=rev["fields"]["uri"],
-                extra={
-                    "state": rev["fields"]["status"]["name"],
-                },
+                state=self._colour_state(rev["fields"]["status"]["name"]),
+                blockers="",
             )
             for rev in revs
         ]
+
+    def _colour_state(self, state: str) -> str:
+        s2c = {
+            "Draft": "cyan",
+            "Changes Planned": "cyan",
+            "Rejected": "red",
+            "Needs Review": "yellow",
+            "Accepted": "green",
+        }
+        c = s2c.get(state, "yellow")
+        return f"[{c}]{state}[/{c}]"

@@ -17,6 +17,8 @@ class CRListItem:
     identifier: str
     title: str
     url: str
+    state: str
+    blockers: str
     extra: dict[str, str] = field(default_factory=dict)
 
 

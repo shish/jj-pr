@@ -67,6 +67,7 @@ class Gerrit(Forge):
         except json.JSONDecodeError as e:
             log.error(f"Failed to parse JSON from {url} ({result[:20]!r}): {e}")
             raise
+        log.debug(f"Response from {url}:\n{json.dumps(result)}")
         return result
 
     def push(
@@ -119,7 +120,7 @@ class Gerrit(Forge):
         query = "owner:self+status:open"
         if not all_projects:
             query += f"+project:{self.project_id}"
-        url = f"{self.forge_url}/a/changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=MESSAGES"
+        url = f"{self.forge_url}/a/changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=DETAILED_ACCOUNTS"
         changes_response = self._request(url)
 
         crs: List[CRListItem] = []
@@ -138,11 +139,34 @@ class Gerrit(Forge):
                     identifier=str(change["_number"]),
                     title=change["subject"],
                     url=f"{self.forge_url}/c/{change['_number']}",
-                    extra={
-                        "state": change["status"],
-                        "blockers": ", ".join(blockers),
-                    },
+                    state=self._colour_state(
+                        is_private=change.get("is_private", False),
+                        work_in_progress=change.get("work_in_progress", False),
+                        blockers=len(blockers) > 0,
+                    ),
+                    blockers=", ".join(blockers),
                 )
             )
 
         return crs
+
+    def _colour_state(
+        self,
+        is_private: bool = False,
+        work_in_progress: bool = False,
+        blockers: bool = False,
+    ) -> str:
+        if is_private:
+            state = "Private"
+            color = "cyan"
+        elif work_in_progress:
+            state = "Draft"
+            color = "cyan"
+        elif blockers:
+            state = "Blocked"
+            color = "yellow"
+        else:
+            state = "Accepted"
+            color = "green"
+
+        return f"[{color}]{state}[/{color}]"
