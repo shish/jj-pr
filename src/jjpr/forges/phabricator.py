@@ -83,7 +83,7 @@ class Phabricator(Forge):
         )
         for change_id in changes:
             with jj.with_new(change_id):
-                log.warning(f"[TODO] Pushing {change_id}")
+                log.info(f"Pushing {change_id}")
                 args = ["arc", "diff", "HEAD^"]
                 if draft:
                     args.append("--draft")
@@ -92,7 +92,8 @@ class Phabricator(Forge):
                 utils.run(args, cap=False)
 
     def checkout(self, identifier: str) -> None:
-        log.warning(f"[TODO] Checkout diff {identifier}")
+        log.info(f"Checking out Phabricator diff {identifier}")
+        utils.run(["arc", "patch", identifier], cap=False)
 
     def list(self, all_projects: bool = False) -> List[CRListItem]:
         log.info(
