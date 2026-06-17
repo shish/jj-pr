@@ -4,9 +4,9 @@ import logging
 import re
 from netrc import NetrcParseError, netrc
 from typing import List, Optional, Union
-from urllib.error import HTTPError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+
+import requests
 
 from .. import jj, utils
 from .base import CRListItem, Forge
@@ -47,17 +47,13 @@ class Gerrit(Forge):
     def _request(self, url: str) -> Union[dict, list]:
         auth_header = self._get_auth_header()
 
-        req = Request(url)
-        if auth_header:
-            for key, value in auth_header.items():
-                req.add_header(key, value)
-
         try:
             log.debug(f"Making request to {url}")
-            with urlopen(req) as response:
-                result = response.read().decode("utf-8")
-        except HTTPError as e:
-            if e.code == 401:
+            response = requests.get(url, headers=auth_header or {})
+            response.raise_for_status()
+            result = response.text
+        except requests.exceptions.HTTPError as e:
+            if e.response and e.response.status_code == 401:
                 raise utils.UserError(
                     f"Authentication failed for {url}. Check your netrc credentials."
                 )

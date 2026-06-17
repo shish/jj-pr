@@ -88,6 +88,7 @@ def pull_command(
     all: bool = typer.Option(
         False,
         "--all",
+        "-a",
         help="Rebase all local branches; if not set, only rebase the current branch",
     ),
 ) -> None:
