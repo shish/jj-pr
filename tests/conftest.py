@@ -1,5 +1,3 @@
-"""Pytest configuration and shared fixtures for testing jjpp."""
-
 import logging
 import os
 import shlex
@@ -40,7 +38,7 @@ def tmp_repo() -> Generator[Path, None, None]:
     Yields:
         Path to the temporary jj repository.
     """
-    tmp_dir = tempfile.mkdtemp(prefix="jjpp_jj_")
+    tmp_dir = tempfile.mkdtemp(prefix="jjpr_jj_")
     original_dir = os.getcwd()
 
     try:
@@ -156,7 +154,7 @@ def repo_with_remote(
     remote_dir = None
     try:
         # Create remote repository
-        remote_dir = tempfile.mkdtemp(prefix="jjpp_remote_")
+        remote_dir = tempfile.mkdtemp(prefix="jjpr_remote_")
         os.chdir(remote_dir)
         run_cmd("git", "init", "--bare")
         run_cmd("git", "symbolic-ref", "HEAD", "refs/heads/main")

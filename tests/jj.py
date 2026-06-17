@@ -1,12 +1,9 @@
-"""Tests for jjpp.jj module."""
-
 import logging
 import os
 from pathlib import Path
 
 import pytest
-
-from jjpp import jj
+from jjpr import jj
 
 from .conftest import run_cmd
 

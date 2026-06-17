@@ -1,9 +1,7 @@
-"""Tests for jjpp.forge module."""
-
 import logging
 from typing import Optional
 
-from jjpp.forges.base import CRListItem, Forge
+from jjpr.forges.base import CRListItem, Forge
 
 log = logging.getLogger(__name__)
 
