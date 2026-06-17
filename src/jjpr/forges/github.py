@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from typing import Optional
+from typing import Any, List, Optional
 
 from .. import jj, utils
 from .base import CRListItem, Forge
@@ -110,15 +110,14 @@ class GitHub(Forge):
             "--repo",
             self.remote_url,
             "--json",
-            "number,title,state,url,statusCheckRollup",
+            "number,title,state,url,statusCheckRollup,isDraft,reviews",
         ]
         prs = json.loads(utils.run(cmd))
         crs: list[CRListItem] = []
         c2c = {
-            "SUCCESS": "normal",
-            "FAILURE": "red",
+            "SUCCESS": "green",
             "PENDING": "yellow",
-            "": "normal",
+            "FAILURE": "red",
         }
         for pr in prs:
             # Merge status checks into a blockers string
@@ -128,6 +127,11 @@ class GitHub(Forge):
                 for check in checks
                 if check.get("conclusion") != "SUCCESS"
             )
+
+            # Determine PR state based on draft status and reviews
+            is_draft = pr.get("isDraft", False)
+            reviews = pr.get("reviews", [])
+
             crs.append(
                 CRListItem(
                     forge_name="GitHub",
@@ -136,10 +140,37 @@ class GitHub(Forge):
                     identifier=str(pr["number"]),
                     title=pr["title"],
                     url=pr["url"],
-                    extra={
-                        "state": pr["state"],
-                        "blockers": blockers,
-                    },
+                    state=self._colour_state(
+                        pr["state"], is_draft=is_draft, reviews=reviews
+                    ),
+                    blockers=blockers,
                 )
             )
         return crs
+
+    def _colour_state(
+        self, state: str, is_draft: bool = False, reviews: Optional[List[Any]] = None
+    ) -> str:
+        if reviews is None:
+            reviews = []
+
+        # Determine display state based on draft and review status
+        if is_draft:
+            display_state = "Draft"
+            color = "cyan"
+        else:
+            # Check review status
+            has_approved = any(r.get("state") == "APPROVED" for r in reviews)
+            has_rejected = any(r.get("state") == "CHANGES_REQUESTED" for r in reviews)
+
+            if has_rejected:
+                display_state = "Rejected"
+                color = "red"
+            elif has_approved:
+                display_state = "Accepted"
+                color = "green"
+            else:
+                display_state = "Needs Review"
+                color = "yellow"
+
+        return f"[{color}]{display_state}[/{color}]"

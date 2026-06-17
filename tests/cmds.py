@@ -16,7 +16,8 @@ def dummy_cr_list_items() -> List[CRListItem]:
             identifier="123",
             title="Fix bug",
             url="https://example.com/repo/123",
-            extra={"Author": "Alice"},
+            state="Open",
+            blockers="",
         ),
         CRListItem(
             forge_name="DummyForge",
@@ -25,7 +26,8 @@ def dummy_cr_list_items() -> List[CRListItem]:
             identifier="124",
             title="Add feature",
             url="https://example.com/repo/124",
-            extra={"Author": "Bob"},
+            state="In Review",
+            blockers="Needs approval",
         ),
     ]
 

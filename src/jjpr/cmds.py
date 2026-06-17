@@ -90,13 +90,15 @@ def display_list(items: List[CRListItem], multi: bool) -> None:
 
     table = Table()
     if len(all_forge_urls) > 1:
-        table.add_column("Forge", style="green")
+        table.add_column("Forge", style="blue")
     if multi:
         table.add_column("Project", style="blue")
-    table.add_column("ID", style="cyan")
-    table.add_column("Title", style="magenta")
+    table.add_column("ID", style="blue")
+    table.add_column("Title", style="green")
+    table.add_column("State")
+    table.add_column("Blockers")
     for key in sorted(all_extra_keys):
-        table.add_column(key.title(), style="yellow")
+        table.add_column(key.title(), style="magenta")
 
     for item in items:
         row = []
@@ -106,6 +108,8 @@ def display_list(items: List[CRListItem], multi: bool) -> None:
             row.append(item.project_id)
         row.append(item.identifier)
         row.append(f"[link={item.url}]{item.title}[/link]")
+        row.append(item.state)
+        row.append(item.blockers)
         table.add_row(
             *row,
             *[
