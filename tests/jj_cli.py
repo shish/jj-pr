@@ -1,22 +1,14 @@
 #!/usr/bin/env python3
-"""Interactive testing library for jj.py"""
+"""Manual testing script for jj.py"""
 
 import logging
 
 import typer
-
-from jjpp import jj
+from jjpr import jj
 
 log = logging.getLogger(__name__)
 
 app = typer.Typer(help=__doc__)
-
-
-@app.callback(invoke_without_command=False)
-def globals(
-    verbose: bool = typer.Option(False, "--verbose", "-v"),
-) -> None:
-    logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO)
 
 
 @app.command(name="closest-work")
@@ -74,6 +66,7 @@ def description_of_cmd(
 
 
 def main():
+    logging.basicConfig(level=logging.DEBUG)
     app()
 
 

@@ -1,12 +1,10 @@
-"""Tests for jjpp.utils module."""
-
 import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
-from jjpp import utils
+from jjpr import utils
 
 from .conftest import run_cmd
 
@@ -65,7 +63,7 @@ class TestGetMergeTarget:
     def test_get_merge_target_invalid_remote(self, tmp_repo: Path):
         """Test that invalid remote raises exception."""
         os.chdir(tmp_repo)
-        with pytest.raises(Exception):
+        with pytest.raises(utils.UserError):
             utils.get_merge_target("nonexistent")
 
 
@@ -86,8 +84,8 @@ class TestGetGitRemoteUrl:
     def test_get_git_remote_url_nonexistent_remote(self, tmp_repo: Path):
         """Test getting URL of non-existent remote returns None."""
         os.chdir(tmp_repo)
-        url = utils.get_git_remote_url("nonexistent")
-        assert url is None
+        with pytest.raises(utils.UserError):
+            utils.get_git_remote_url("nonexistent")
 
     def test_get_git_remote_url_default_remote(
         self, repo_with_remote: tuple[Path, Path]

@@ -2,8 +2,8 @@ from typing import List
 
 import pytest
 
-from jjpp.forges.base import CRListItem
-from jjpp.main import _display_list
+from jjpr.cmds import display_list
+from jjpr.forges.base import CRListItem
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def dummy_cr_list_items() -> List[CRListItem]:
 
 class TestBase:
     def test_display_list_multi(self, dummy_cr_list_items: list[CRListItem]):
-        _display_list(dummy_cr_list_items, multi=True)
+        display_list(dummy_cr_list_items, multi=True)
 
     def test_display_list_empty(self):
-        _display_list([], multi=False)
+        display_list([], multi=False)

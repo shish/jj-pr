@@ -1,4 +1,5 @@
 import logging
+import shlex
 import subprocess
 from contextlib import contextmanager
 from typing import Literal, overload
@@ -32,7 +33,7 @@ def run(*args: str, cap: bool = True) -> str | None:
     try:
         return utils.run(["jj"] + list(args), cap=cap)
     except subprocess.CalledProcessError as e:
-        raise JjError() from e
+        raise JjError(f"Failed to run {shlex.join(['jj'] + list(args))!r}") from e
 
 
 def revset_to_changeid(revset: RevSet) -> ChangeID:

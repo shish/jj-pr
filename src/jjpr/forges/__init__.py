@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Literal, Optional
 from urllib.parse import urlparse
 
 from .. import utils
@@ -10,8 +10,10 @@ from .phabricator import Phabricator
 
 log = logging.getLogger(__name__)
 
+ForgeName = Literal["github", "phabricator", "gerrit"]
 
-def detect_forge_from_url(url: str) -> Optional[str]:
+
+def detect_forge_from_url(url: str) -> Optional[ForgeName]:
     if not url:
         return None
 
@@ -32,22 +34,12 @@ def detect_forge_from_url(url: str) -> Optional[str]:
     return None
 
 
-def get_forge(forge: Optional[str], remote: str) -> Optional[Forge]:
+def get_forge(forge: Optional[ForgeName], remote: str) -> Forge:
     remote_url = utils.get_git_remote_url(remote)
-    if not remote_url:
-        log.error(f"Error: Could not find git remote URL for '{remote}'")
-        return None
 
     # If forge is explicitly specified, use that
     if not forge:
         forge = detect_forge_from_url(remote_url)
-        if not forge:
-            log.error(
-                f"Error: Could not detect forge from remote URL: {remote_url}. "
-                "Please specify --forge explicitly (github, phabricator, gerrit)."
-            )
-            return None
-
     if forge == "github":
         return GitHub(remote, remote_url)
     elif forge == "phabricator":
@@ -55,7 +47,10 @@ def get_forge(forge: Optional[str], remote: str) -> Optional[Forge]:
     elif forge == "gerrit":
         return Gerrit(remote, remote_url)
 
-    return None  # pragma: no cover
+    raise utils.UserError(
+        f"Error: Could not detect forge from remote URL: {remote_url}. "
+        "Please specify --forge explicitly (github, phabricator, gerrit)."
+    )
 
 
 __all__ = [

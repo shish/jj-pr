@@ -1,10 +1,10 @@
-"""Tests for jjpp.forge module."""
-
 import logging
 import os
 from pathlib import Path
 
-from jjpp import forges
+import pytest
+
+from jjpr import forges, utils
 
 from ..conftest import run_cmd
 
@@ -91,13 +91,13 @@ class TestGetForge:
     def test_get_forge_nonexistent_remote(self, tmp_repo: Path):
         """Test that nonexistent remote returns None."""
         os.chdir(tmp_repo)
-        forge = forges.get_forge(None, "nonexistent")
-        assert forge is None
+        with pytest.raises(utils.UserError):
+            forges.get_forge(None, "nonexistent")
 
     def test_get_forge_no_auto_detect_no_forge_specified(self, tmp_repo: Path):
         """Test that unknown URL without explicit forge returns None."""
         os.chdir(tmp_repo)
         run_cmd("git", "remote", "add", "origin", "https://unknown.example.com/repo")
 
-        forge = forges.get_forge(None, "origin")
-        assert forge is None
+        with pytest.raises(utils.UserError):
+            forges.get_forge(None, "origin")
