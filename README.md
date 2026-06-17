@@ -48,6 +48,8 @@ I really just want `jj pr pull` to bring me up to date with remote changes, and 
 
 * `github` - requires `gh` CLI to be installed and configured
 * `gerrit` - requires an API token to be set in `~/.netrc`
+  * `machine <gerrit-host> login <username> password <api-token>`
+  * (API token from settings -> HTTP Credentials)
 * `phabricator` - requires `arc` CLI to be installed and configured
 
 ## Install
