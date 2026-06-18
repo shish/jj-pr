@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, List, Optional
 
-import requests
+import httpx
 from rich.pretty import pretty_repr
 
 from .. import jj, utils
@@ -12,8 +12,8 @@ from .base import CRListItem, Forge
 log = logging.getLogger(__name__)
 
 
-class PhabricatorSession(requests.Session):
-    """HTTPAdapter that automatically adds api.token to POST request data."""
+class PhabricatorClient(httpx.Client):
+    """HTTP client that automatically adds api.token to POST request data."""
 
     def __init__(self, token: str, *args, **kwargs):
         self.token = token
@@ -27,10 +27,10 @@ class PhabricatorSession(requests.Session):
             else:
                 new_key = key
             if isinstance(value, dict):
-                PhabricatorSession._flatten_params(new_key, formed_params, value)
+                PhabricatorClient._flatten_params(new_key, formed_params, value)
             elif isinstance(value, list):
                 for i, item in enumerate(value):
-                    PhabricatorSession._flatten_params(
+                    PhabricatorClient._flatten_params(
                         new_key, formed_params, {str(i): item}
                     )
             else:
@@ -42,7 +42,7 @@ class PhabricatorSession(requests.Session):
         *args,
         data: Optional[dict[str, Any]] = None,
         **kwargs,
-    ) -> requests.Response:
+    ) -> httpx.Response:
         formed_params = {
             "api.token": self.token,
         }
@@ -52,7 +52,7 @@ class PhabricatorSession(requests.Session):
 
 class Phabricator(Forge):
     @property
-    def session(self) -> requests.Session:
+    def session(self) -> httpx.Client:
         token = None
         arc_conf = Path.home() / ".arcrc"
         if arc_conf.exists():
@@ -63,7 +63,7 @@ class Phabricator(Forge):
             raise utils.UserError(
                 "Phabricator API token not found. Configure it in ~/.arcrc"
             )
-        return PhabricatorSession(token)
+        return PhabricatorClient(token)
 
     @property
     def project_id(self) -> str:

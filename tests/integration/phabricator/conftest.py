@@ -7,10 +7,10 @@ import tempfile
 from pathlib import Path
 from typing import Generator
 
+import httpx
 import pytest
-import requests
 
-from jjpr.forges.phabricator import PhabricatorSession
+from jjpr.forges.phabricator import PhabricatorClient
 
 from ..conftest import run_cmd
 
@@ -25,7 +25,7 @@ def phabricator_url() -> str:
 def phabricator_session(
     tmp_home: Path,
     phabricator_url: str,
-) -> Generator[requests.Session, None, None]:
+) -> Generator[httpx.Client, None, None]:
     # configure .arcrc
     phabricator_token = os.getenv("PHABRICATOR_API_TOKEN")
     if not phabricator_token:
@@ -35,25 +35,26 @@ def phabricator_session(
     rc.write_text(json.dumps(data))
     rc.chmod(0o600)
 
-    # configure http session with persistent token
-    session = PhabricatorSession(phabricator_token)
+    # configure http client with persistent token
+    client = PhabricatorClient(phabricator_token)
 
-    # check that the session works
+    # check that the client works
     try:
-        response = session.post(f"{phabricator_url}/api/user.whoami")
+        response = client.post(f"{phabricator_url}/api/user.whoami")
         response.raise_for_status()
         data = response.json()
         assert data["result"]["userName"] == "admin"
     except Exception as e:
         pytest.skip(f"Invalid Phabricator API token or unable to authenticate: {e}")
 
-    yield session
+    yield client
+    client.close()
 
 
 @pytest.fixture
 def phabricator_repo(
     phabricator_url: str,
-    phabricator_session: requests.Session,
+    phabricator_session: httpx.Client,
 ) -> Generator[str, None, None]:
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
     repo_name = f"ztst-phab-{rand}"

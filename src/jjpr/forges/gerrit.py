@@ -6,7 +6,7 @@ from netrc import NetrcParseError, netrc
 from typing import List, Optional, Union
 from urllib.parse import urlparse
 
-import requests
+import httpx
 
 from .. import jj, utils
 from .base import CRListItem, Forge
@@ -49,11 +49,11 @@ class Gerrit(Forge):
 
         try:
             log.debug(f"Making request to {url}")
-            response = requests.get(url, headers=auth_header or {})
+            response = httpx.get(url, headers=auth_header or {})
             response.raise_for_status()
             result = response.text
-        except requests.exceptions.HTTPError as e:
-            if e.response and e.response.status_code == 401:
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 401:
                 raise utils.UserError(
                     f"Authentication failed for {url}. Check your netrc credentials."
                 )

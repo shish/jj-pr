@@ -6,8 +6,8 @@ import tempfile
 from pathlib import Path
 from typing import Generator
 
+import httpx
 import pytest
-import requests
 
 from ..conftest import run_cmd
 
@@ -21,15 +21,14 @@ def github_url() -> str:
 @pytest.fixture(scope="session")
 def github_session(
     github_url: str,
-) -> Generator[requests.Session, None, None]:
+) -> Generator[httpx.Client, None, None]:
     """Create and validate a GitHub API session."""
     token = os.getenv("GITHUB_TOKEN")
     if not token:
         pytest.skip("GITHUB_TOKEN environment variable not set")
 
-    session = requests.Session()
-    session.headers.update(
-        {
+    client = httpx.Client(
+        headers={
             "Authorization": f"Bearer {token}",
             "Accept": "application/vnd.github.v3+json",
             # "X-GitHub-Api-Version: 2026-03-10",
@@ -43,20 +42,21 @@ def github_session(
         # For GitHub Enterprise, API is at {github_url}/api/v3
         api_url = f"{github_url}/api/v3"
 
-    # Check that the session works
+    # Check that the client works
     try:
-        response = session.get(f"{api_url}/user")
+        response = client.get(f"{api_url}/user")
         response.raise_for_status()
     except Exception as e:
         pytest.skip(f"GitHub API error or invalid token: {e}")
 
-    yield session
+    yield client
+    client.close()
 
 
 @pytest.fixture
 def github_repo(
     github_url: str,
-    github_session: requests.Session,
+    github_session: httpx.Client,
 ) -> Generator[str, None, None]:
     """Create and cleanup a test repository on GitHub."""
     rand = "".join(random.choices(string.ascii_lowercase, k=4))

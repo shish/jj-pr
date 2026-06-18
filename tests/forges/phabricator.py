@@ -5,9 +5,9 @@ from jjpr.forges import phabricator
 log = logging.getLogger(__name__)
 
 
-class TestPhabricatorSession:
+class TestPhabricatorClient:
     def test_flatten_params(self):
-        p = phabricator.PhabricatorSession("api-1234")
+        p = phabricator.PhabricatorClient("api-1234")
         params = {
             "key1": "value1",
             "key2": {
