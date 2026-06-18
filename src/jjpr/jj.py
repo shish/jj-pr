@@ -36,12 +36,86 @@ def run(*args: str, cap: bool = True) -> str | None:
         raise JjError(f"Failed to run {shlex.join(['jj'] + list(args))!r}") from e
 
 
+#######################################################################
+# Direct mappings to jj commands
+
+
+def bookmark_advance(name: str, to: RevSet) -> None:
+    run("bookmark", "advance", name, "--to", to, cap=False)
+
+
+def bookmark_create(name: str, r: RevSet) -> None:
+    run("bookmark", "create", name, "-r", r, cap=False)
+
+
+def gerrit_upload(
+    r: str,
+    wip: bool = False,
+    message: str | None = None,
+    remote_branch: str | None = None,
+) -> None:
+    args = ["gerrit", "upload", "-r", r]
+    if wip:
+        args.append("--wip")
+    if message:
+        args.extend(["--message", message])
+    if remote_branch:
+        args.extend(["--remote-branch", remote_branch])
+    run(*args, cap=False)
+
+
+def git_fetch(remote: str) -> None:
+    run("git", "fetch", "--remote", remote, cap=False)
+
+
+def git_push(remote: str, bookmark: str) -> None:
+    run("git", "push", "--remote", remote, "--bookmark", bookmark, cap=False)
+
+
+def log_changes(r: RevSet) -> list[ChangeID]:
+    return run(
+        "log",
+        "-r",
+        r,
+        "--no-graph",
+        "--reversed",
+        "-T",
+        "self.change_id().short() ++ '\n'",
+        cap=True,
+    ).split("\n")
+
+
+def rebase(d: RevSet, r: RevSet) -> None:
+    run("rebase", "--skip-emptied", "-d", d, "-r", r, cap=False)
+
+
+def root() -> str:
+    return run("root", cap=True)
+
+
+#######################################################################
+# Extra helpers
+
+
 def revset_to_changeid(revset: RevSet) -> ChangeID:
-    return run("log", "-r", revset, "--no-graph", "-T", "self.change_id().short()")
+    cs = log_changes(revset)
+    if len(cs) != 1:
+        raise ValueError(f"Revset {revset} did not resolve to a single change ID")
+    return cs[0]
 
 
 def closest_work() -> ChangeID:
     return revset_to_changeid("heads(::@ & mutable() & (~empty() | merges()))")
+
+
+def specified_or_stack(
+    rev: RevSet | None,
+    require_description: bool = False,
+) -> list[ChangeID]:
+    if rev:
+        return [revset_to_changeid(rev)]
+    else:
+        return current_stack(require_description=require_description)
 
 
 def current_stack(require_description: bool = False) -> list[ChangeID]:
@@ -49,63 +123,30 @@ def current_stack(require_description: bool = False) -> list[ChangeID]:
         stack = 'trunk()..heads(::@ & mutable() & ~description(exact:"") & (~empty() | merges()))'
     else:
         stack = "trunk()..heads(::@ & mutable() & (~empty() | merges()))"
-    output = run(
-        "log",
-        "-r",
-        stack,
-        "--no-graph",
-        "--reversed",
-        "-T",
-        'self.change_id().short() ++ "\n"',
-    )
-    return [c for c in output.split("\n") if c]
+    return log_changes(stack)
+
+
+def change_info(change_id: ChangeID, t: str) -> str:
+    return run("log", "-r", change_id, "--no-graph", "-T", t)
 
 
 def change_parents(change_id: ChangeID) -> list[ChangeID]:
-    output = run(
-        "log",
-        "-r",
-        change_id,
-        "--no-graph",
-        "-T",
-        "parents.map(|p| p.change_id().short()).join('\\n')",
-    )
+    output = change_info(change_id, "parents.map(|p| p.change_id().short()).join('\n')")
     return [p for p in output.split("\n") if p]
 
 
 def files_in(change_id: ChangeID) -> list[str]:
-    output = run(
-        "log",
-        "-r",
-        change_id,
-        "--no-graph",
-        "-T",
-        "self.diff().files().map(|f| f.path()).join('\n')",
-    )
+    output = change_info(change_id, "self.diff().files().map(|f| f.path()).join('\n')")
     return [f for f in output.split("\n") if f]
 
 
 def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> list[str]:
-    output = run(
-        "log",
-        "-r",
-        change_id,
-        "--no-graph",
-        "-T",
-        "self.bookmarks().map(|b| b.name()).join('\n')",
-    )
+    output = change_info(change_id, "self.bookmarks().map(|b| b.name()).join('\n')")
     return [b for b in output.split("\n") if b and b.startswith(prefix)]
 
 
 def description_of(change_id: ChangeID) -> str:
-    output = run(
-        "log",
-        "-r",
-        change_id,
-        "--no-graph",
-        "-T",
-        "self.description()",
-    )
+    output = change_info(change_id, "self.description()")
     return output.strip()
 
 

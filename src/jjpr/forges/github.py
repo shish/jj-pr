@@ -18,11 +18,7 @@ class GitHub(Forge):
         draft: bool = False,
         message: Optional[str] = None,
     ) -> None:
-        changes = (
-            [jj.revset_to_changeid(ref)]
-            if ref
-            else jj.current_stack(require_description=True)
-        )
+        changes = jj.specified_or_stack(ref, require_description=True)
 
         # if a change between the base and current change has
         # a branch name that starts with "pr/":
@@ -34,16 +30,8 @@ class GitHub(Forge):
             pr_branch = branches[-1]
             log.info(f"Updating existing PR branch: {pr_branch}")
             with jj.with_new(changes[-1]):
-                jj.run("bookmark", "advance", pr_branch, "--to", changes[-1])
-                jj.run(
-                    "git",
-                    "push",
-                    "--remote",
-                    self.remote,
-                    "--bookmark",
-                    pr_branch,
-                    cap=False,
-                )
+                jj.bookmark_advance(pr_branch, to=changes[-1])
+                jj.git_push(remote=self.remote, bookmark=pr_branch)
         else:
             # - create a new branch named "pr/<sanitized-title>" where
             #   <sanitized-title> is a name based on the description of
@@ -59,16 +47,8 @@ class GitHub(Forge):
             pr_branch = utils.unique_branch_name(f"pr/{sanitized_title}")
             log.info(f"Creating new PR branch: {pr_branch}")
             with jj.with_new(changes[-1]):
-                jj.run("bookmark", "create", pr_branch, "-r", changes[-1])
-                jj.run(
-                    "git",
-                    "push",
-                    "--remote",
-                    self.remote,
-                    "--bookmark",
-                    pr_branch,
-                    cap=False,
-                )
+                jj.bookmark_create(pr_branch, r=changes[-1])
+                jj.git_push(remote=self.remote, bookmark=pr_branch)
                 base = utils.get_merge_target()
                 args = [
                     "gh",

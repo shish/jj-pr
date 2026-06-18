@@ -46,7 +46,7 @@ def main(
 
     if not path:
         try:
-            path = Path(jj.run("root"))
+            path = Path(jj.root())
         except Exception as e:
             raise utils.UserError(f"Can't detect current repository: {e}")
 
@@ -95,12 +95,8 @@ def pull_command(
     """Pull from remote and rebase current stack."""
     r = cast(GlobalOptions, ctx.obj).repo
     with r.chdir():
-        jj.run("git", "fetch", "--remote", r.forge.remote, cap=False)
-        if all:
-            range = "mutable()"
-        else:
-            range = "trunk()..@"
-        jj.run("rebase", "--skip-emptied", "-d", "trunk()", "-r", range, cap=False)
+        jj.git_fetch(remote=r.forge.remote)
+        jj.rebase(d="trunk()", r="mutable()" if all else "trunk()..@")
 
 
 @app.command("checkout")

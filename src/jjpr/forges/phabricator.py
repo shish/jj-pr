@@ -99,11 +99,7 @@ class Phabricator(Forge):
         draft: bool = False,
         message: Optional[str] = None,
     ) -> None:
-        changes = (
-            [jj.revset_to_changeid(ref)]
-            if ref
-            else jj.current_stack(require_description=True)
-        )
+        changes = jj.specified_or_stack(ref, require_description=False)
         for change_id in changes:
             with jj.with_new(change_id):
                 log.info(f"Pushing {change_id}")

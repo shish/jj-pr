@@ -73,11 +73,7 @@ def pre_commit(ref: Optional[str]) -> None:
         log.info("No pre-commit configuration found, skipping")
         return
 
-    changes = (
-        [jj.revset_to_changeid(ref)]
-        if ref
-        else jj.current_stack(require_description=False)
-    )
+    changes = jj.specified_or_stack(ref, require_description=False)
     for n, change_id in enumerate(changes):
         if n > 0:
             print("=" * 80)

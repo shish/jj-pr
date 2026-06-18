@@ -79,13 +79,12 @@ class Gerrit(Forge):
         else:
             range = jj.closest_work()
         log.info(f"Pushing {range} to gerrit")
-        args = ["gerrit", "upload", "-r", range]
-        if draft:
-            args.append("--wip")
-        if message:
-            args.extend(["--message", message])
-        args.extend(["--remote-branch", utils.get_merge_target()])
-        jj.run(*args, cap=False)
+        jj.gerrit_upload(
+            r=range,
+            wip=draft,
+            message=message,
+            remote_branch=utils.get_merge_target(),
+        )
 
     def checkout(self, identifier: str) -> None:
         log.info(f"Fetching Gerrit change {identifier}")
