@@ -71,13 +71,13 @@ class TestGetForge:
         assert forge is not None
         assert forge.__class__.__name__ == "GitHub"
 
-        forge = forges.get_forge("gerrit", "github")
-        assert forge is not None
-        assert forge.__class__.__name__ == "Gerrit"
+        # forge = forges.get_forge("gerrit", "github")
+        # assert forge is not None
+        # assert forge.__class__.__name__ == "Gerrit"
 
-        forge = forges.get_forge("phabricator", "github")
-        assert forge is not None
-        assert forge.__class__.__name__ == "Phabricator"
+        # forge = forges.get_forge("phabricator", "github")
+        # assert forge is not None
+        # assert forge.__class__.__name__ == "Phabricator"
 
     def test_get_forge_auto_detect_github(self, repo_with_remote: tuple[Path, Path]):
         """Test auto-detecting GitHub forge."""

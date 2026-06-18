@@ -72,19 +72,6 @@ def git_push(remote: str, bookmark: str) -> None:
     run("git", "push", "--remote", remote, "--bookmark", bookmark, cap=False)
 
 
-def log_changes(r: RevSet) -> list[ChangeID]:
-    return run(
-        "log",
-        "-r",
-        r,
-        "--no-graph",
-        "--reversed",
-        "-T",
-        "self.change_id().short() ++ '\n'",
-        cap=True,
-    ).split("\n")
-
-
 def rebase(d: RevSet, r: RevSet) -> None:
     run("rebase", "--skip-emptied", "-d", d, "-r", r, cap=False)
 
@@ -97,15 +84,28 @@ def root() -> str:
 # Extra helpers
 
 
-def revset_to_changeid(revset: RevSet) -> ChangeID:
-    cs = log_changes(revset)
+def change_ids(r: RevSet) -> list[ChangeID]:
+    return run(
+        "log",
+        "-r",
+        r,
+        "--no-graph",
+        "--reversed",
+        "-T",
+        "self.change_id().short() ++ '\n'",
+        cap=True,
+    ).split("\n")
+
+
+def change_id(revset: RevSet) -> ChangeID:
+    cs = change_ids(revset)
     if len(cs) != 1:
         raise ValueError(f"Revset {revset} did not resolve to a single change ID")
     return cs[0]
 
 
 def closest_work() -> ChangeID:
-    return revset_to_changeid("heads(::@ & mutable() & (~empty() | merges()))")
+    return change_id("heads(::@ & mutable() & (~empty() | merges()))")
 
 
 def specified_or_stack(
@@ -113,7 +113,7 @@ def specified_or_stack(
     require_description: bool = False,
 ) -> list[ChangeID]:
     if rev:
-        return [revset_to_changeid(rev)]
+        return [change_id(rev)]
     else:
         return current_stack(require_description=require_description)
 
@@ -123,14 +123,14 @@ def current_stack(require_description: bool = False) -> list[ChangeID]:
         stack = 'trunk()..heads(::@ & mutable() & ~description(exact:"") & (~empty() | merges()))'
     else:
         stack = "trunk()..heads(::@ & mutable() & (~empty() | merges()))"
-    return log_changes(stack)
+    return change_ids(stack)
 
 
 def change_info(change_id: ChangeID, t: str) -> str:
     return run("log", "-r", change_id, "--no-graph", "-T", t)
 
 
-def change_parents(change_id: ChangeID) -> list[ChangeID]:
+def parents_of(change_id: ChangeID) -> list[ChangeID]:
     output = change_info(change_id, "parents.map(|p| p.change_id().short()).join('\n')")
     return [p for p in output.split("\n") if p]
 
@@ -157,9 +157,9 @@ def with_edit(rev: RevSet, new: bool = False):
     If the target ref is already the current commit, does nothing.
     If the current change is empty, creates a new empty commit with the same parent.
     """
-    orig_change_id = revset_to_changeid("@")
-    orig_parents = change_parents(orig_change_id)
-    targ_change_id = revset_to_changeid(rev)
+    orig_change_id = change_id("@")
+    orig_parents = parents_of(orig_change_id)
+    targ_change_id = change_id(rev)
 
     if not new and orig_change_id == targ_change_id:
         log.debug(f"Already on target change {targ_change_id}, no edit needed.")

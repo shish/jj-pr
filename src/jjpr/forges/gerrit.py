@@ -14,39 +14,18 @@ log = logging.getLogger(__name__)
 
 
 class Gerrit(Forge):
-    def _get_auth_header(self) -> Optional[dict]:
-        try:
-            rc = netrc()
-        except (FileNotFoundError, NetrcParseError) as e:
-            log.warning(f"Could not get creds from netrc file: {e}")
-            return None
+    def __init__(self, remote: str, remote_url: httpx.URL):
+        super().__init__(remote, remote_url)
+        self.client = httpx.Client(
+            headers=_get_auth_header(self.forge_url.host),
+            base_url=self.forge_url,
+        )
 
-        # Extract hostname from forge_url (e.g., "gerrit.example.com" from "https://gerrit.example.com")
-        hostname = self.forge_url.host
-
-        if not hostname:
-            log.warning("Could not determine hostname from forge_url")
-            return None
-
-        auth = rc.authenticators(hostname)
-        if not auth:
-            log.warning(f"No credentials found in netrc for {hostname}")
-            return None
-
-        login, _, password = auth
-        if not password:
-            log.warning(f"Empty password in netrc for {hostname}")
-            return None
-
-        credentials = base64.b64encode(f"{login}:{password}".encode()).decode()
-        return {"Authorization": f"Basic {credentials}"}
-
-    def _request(self, url: httpx.URL) -> Union[dict, list]:
-        auth_header = self._get_auth_header()
-
+    def _request(self, path: str) -> Union[dict, list]:
+        url = self.forge_url.join(path)
         try:
             log.debug(f"Making request to {url}")
-            response = httpx.get(url, headers=auth_header or {})
+            response = self.client.get(url)
             response.raise_for_status()
             result = response.text
         except httpx.HTTPStatusError as e:
@@ -74,7 +53,7 @@ class Gerrit(Forge):
         message: Optional[str] = None,
     ) -> None:
         if ref:
-            change_id = jj.revset_to_changeid(ref)
+            change_id = jj.change_id(ref)
             range = f"{change_id}::{change_id}"
         else:
             range = jj.closest_work()
@@ -89,8 +68,9 @@ class Gerrit(Forge):
     def checkout(self, identifier: str) -> None:
         log.info(f"Fetching Gerrit change {identifier}")
         # Query API to get the latest patch set number
-        url = self.forge_url.join(f"/a/changes/{identifier}?o=CURRENT_REVISION")
-        change_data_response = self._request(url)
+        change_data_response = self._request(
+            f"/a/changes/{identifier}?o=CURRENT_REVISION"
+        )
 
         # Ensure response is a dict
         if not isinstance(change_data_response, dict):
@@ -116,10 +96,9 @@ class Gerrit(Forge):
         query = "owner:self+status:open"
         if not all_projects:
             query += f"+project:{self.project_id}"
-        url = self.forge_url.join(
+        changes_response = self._request(
             f"/a/changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=DETAILED_ACCOUNTS"
         )
-        changes_response = self._request(url)
 
         crs: List[CRListItem] = []
         for change in changes_response:
@@ -137,7 +116,7 @@ class Gerrit(Forge):
                     identifier=str(change["_number"]),
                     title=change["subject"],
                     url=self.forge_url.join(f"/c/{change['_number']}"),
-                    state=self._colour_state(
+                    state=_colour_state(
                         is_private=change.get("is_private", False),
                         work_in_progress=change.get("work_in_progress", False),
                         blockers=len(blockers) > 0,
@@ -148,23 +127,48 @@ class Gerrit(Forge):
 
         return crs
 
-    def _colour_state(
-        self,
-        is_private: bool = False,
-        work_in_progress: bool = False,
-        blockers: bool = False,
-    ) -> str:
-        if is_private:
-            state = "Private"
-            color = "cyan"
-        elif work_in_progress:
-            state = "Draft"
-            color = "cyan"
-        elif blockers:
-            state = "Blocked"
-            color = "yellow"
-        else:
-            state = "Accepted"
-            color = "green"
 
-        return f"[{color}]{state}[/{color}]"
+def _get_auth_header(hostname: str | None) -> Optional[dict]:
+    try:
+        rc = netrc()
+    except (FileNotFoundError, NetrcParseError) as e:
+        log.warning(f"Could not get creds from netrc file: {e}")
+        return None
+
+    if not hostname:
+        log.warning("Could not determine hostname from forge_url")
+        return None
+
+    auth = rc.authenticators(hostname)
+    if not auth:
+        log.warning(f"No credentials found in netrc for {hostname}")
+        return None
+
+    login, _, password = auth
+    if not password:
+        log.warning(f"Empty password in netrc for {hostname}")
+        return None
+
+    credentials = base64.b64encode(f"{login}:{password}".encode()).decode()
+    return {"Authorization": f"Basic {credentials}"}
+
+
+def _colour_state(
+    is_private: bool = False,
+    work_in_progress: bool = False,
+    blockers: bool = False,
+) -> str:
+    if is_private:
+        state = "Private"
+        color = "cyan"
+    elif work_in_progress:
+        state = "Draft"
+        color = "cyan"
+    elif blockers:
+        state = "Blocked"
+        color = "yellow"
+    else:
+        state = "Accepted"
+        color = "green"
+
+    return f"[{color}]{state}[/{color}]"

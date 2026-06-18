@@ -28,7 +28,7 @@ def current_stack_cmd():
 def revset_to_changeid_cmd(
     revset: str = typer.Argument(..., help="The revset expression to convert"),
 ):
-    result = jj.revset_to_changeid(revset)
+    result = jj.change_id(revset)
     typer.echo(result)
 
 
@@ -37,7 +37,7 @@ def branches_pointing_to_cmd(
     revs: list[str] = typer.Argument(..., help="The revset expressions to convert"),
 ):
     if revs:
-        changes = [jj.revset_to_changeid(rev) for rev in revs]
+        changes = [jj.change_id(rev) for rev in revs]
     else:
         changes = jj.current_stack(require_description=False)
     for change_id in changes:
@@ -50,7 +50,7 @@ def branches_pointing_to_cmd(
 def files_in_cmd(
     revset: str = typer.Argument(..., help="The revset expression to convert"),
 ):
-    change_id = jj.revset_to_changeid(revset)
+    change_id = jj.change_id(revset)
     result = jj.files_in(change_id)
     for file in result:
         typer.echo(file)
@@ -60,7 +60,7 @@ def files_in_cmd(
 def description_of_cmd(
     revset: str = typer.Argument(..., help="The revset expression to convert"),
 ):
-    change_id = jj.revset_to_changeid(revset)
+    change_id = jj.change_id(revset)
     result = jj.description_of(change_id)
     typer.echo(result)
 

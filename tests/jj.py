@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import pytest
+
 from jjpr import jj
 
 from .conftest import run_cmd
@@ -33,7 +34,7 @@ class TestRevsetToChangeid:
     def test_revset_to_changeid_current(self, repo_with_commits: Path):
         """Test converting current commit revset to change ID."""
         os.chdir(repo_with_commits)
-        change_id = jj.revset_to_changeid("@")
+        change_id = jj.change_id("@")
         assert change_id
         assert len(change_id) > 0
         # Change IDs are short hashes
@@ -42,7 +43,7 @@ class TestRevsetToChangeid:
     def test_revset_to_changeid_root(self, repo_with_commits: Path):
         """Test converting root revset to change ID."""
         os.chdir(repo_with_commits)
-        change_id = jj.revset_to_changeid("root()")
+        change_id = jj.change_id("root()")
         assert change_id
         assert isinstance(change_id, str)
 
@@ -50,7 +51,7 @@ class TestRevsetToChangeid:
         """Test that invalid revsets raise an error."""
         os.chdir(tmp_repo)
         with pytest.raises(jj.JjError):
-            jj.revset_to_changeid("invalid::revset:::xyz")
+            jj.change_id("invalid::revset:::xyz")
 
 
 class TestClosestWork:
@@ -112,7 +113,7 @@ class TestChangeParents:
         stack = jj.current_stack()
         if len(stack) > 1:
             change_id = stack[1]
-            parents = jj.change_parents(change_id)
+            parents = jj.parents_of(change_id)
             assert isinstance(parents, list)
             assert len(parents) > 0
 
@@ -120,8 +121,8 @@ class TestChangeParents:
         """Test getting parents of initial commit (should have 0 or 1 parent)."""
         os.chdir(repo_with_commits)
         # Get root
-        root_id = jj.revset_to_changeid("root()")
-        parents = jj.change_parents(root_id)
+        root_id = jj.change_id("root()")
+        parents = jj.parents_of(root_id)
         assert isinstance(parents, list)
 
 
@@ -144,7 +145,7 @@ class TestFilesIn:
         os.chdir(repo_with_commits)
         run_cmd("jj", "new")
         # Get the empty commit
-        current = jj.revset_to_changeid("@")
+        current = jj.change_id("@")
         files = jj.files_in(current)
         assert isinstance(files, list)
         assert len(files) == 0
@@ -183,7 +184,7 @@ class TestBranchesPointingTo:
     def test_branches_pointing_to_no_branches(self, repo_with_commits: Path):
         """Test getting branches when none exist."""
         os.chdir(repo_with_commits)
-        current = jj.revset_to_changeid("@")
+        current = jj.change_id("@")
         branches = jj.branches_pointing_to(current)
         assert isinstance(branches, list)
 
@@ -206,7 +207,7 @@ class TestDescriptionOf:
     def test_description_includes_message(self, repo_with_commits: Path):
         """Test that description includes commit message."""
         os.chdir(repo_with_commits)
-        current = jj.revset_to_changeid("@")
+        current = jj.change_id("@")
         description = jj.description_of(current)
         # Description should be a string (may be empty if description not set)
         assert isinstance(description, str)
@@ -220,25 +221,25 @@ class TestWithEdit:
         os.chdir(repo_with_commits)
         stack = jj.current_stack()
         run_cmd("jj", "edit", "@-")  # be on the most recent not-empty commit
-        original = jj.revset_to_changeid("@")
+        original = jj.change_id("@")
 
         assert len(stack) > 1
         target = stack[0]
         with jj.with_edit(target):
-            assert jj.revset_to_changeid("@") == target
+            assert jj.change_id("@") == target
 
-        assert jj.revset_to_changeid("@") == original
+        assert jj.change_id("@") == original
 
     def test_with_edit_no_op_when_already_on_target(self, repo_with_commits: Path):
         """Test that with_edit is no-op when already on target."""
         os.chdir(repo_with_commits)
-        current = jj.revset_to_changeid("@")
+        current = jj.change_id("@")
 
         with jj.with_edit(current):
-            during = jj.revset_to_changeid("@")
+            during = jj.change_id("@")
             assert during == current
 
-        after = jj.revset_to_changeid("@")
+        after = jj.change_id("@")
         assert after == current
 
     def test_with_edit_preserves_empty_commit(self, repo_with_commits: Path):
@@ -249,16 +250,16 @@ class TestWithEdit:
         assert len(stack) > 1
 
         target = stack[0]
-        original = jj.revset_to_changeid("@")
+        original = jj.change_id("@")
         assert jj.files_in(original) == []  # Ensure original is empty
-        original_parents = jj.change_parents(original)
+        original_parents = jj.parents_of(original)
 
         with jj.with_edit(target):
-            assert jj.revset_to_changeid("@") == target
+            assert jj.change_id("@") == target
 
-        replacement = jj.revset_to_changeid("@")
+        replacement = jj.change_id("@")
         assert jj.files_in(replacement) == []  # Ensure we return to empty
-        assert jj.change_parents(replacement) == original_parents
+        assert jj.parents_of(replacement) == original_parents
 
 
 class TestWithNew:
@@ -268,14 +269,14 @@ class TestWithNew:
         """Test that with_new creates a new commit."""
         os.chdir(repo_with_commits)
         stack = jj.current_stack()
-        original_parents = jj.change_parents("@")
+        original_parents = jj.parents_of("@")
 
         assert len(stack) > 1
         target = stack[0]
         with jj.with_new(target):
-            assert jj.change_parents("@") == [target]
+            assert jj.parents_of("@") == [target]
 
-        assert jj.change_parents("@") == original_parents
+        assert jj.parents_of("@") == original_parents
 
 
 if __name__ == "__main__":

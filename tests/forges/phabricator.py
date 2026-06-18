@@ -17,7 +17,7 @@ class TestPhabricatorClient:
             "key3": ["listitem3", {"subkey3": "subvalue3"}],
         }
         formed_params = {}
-        p._flatten_params(base=None, formed_params=formed_params, params=params)
+        p._struct2http(base=None, formed_params=formed_params, params=params)
         expected = {
             "key1": "value1",
             "key2[subkey1]": "subvalue1",
