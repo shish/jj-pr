@@ -38,20 +38,39 @@ class Repo:
             os.chdir(original_dir)
 
 
+def _get_pc_command() -> Optional[str]:
+    pc_configured = Path(".git/hooks/pre-commit").exists()
+    if not pc_configured:
+        return None
+
+    pc_cmd = None
+    for cmd in ["prek", "pre-commit"]:
+        if pc_cmd := shutil.which(cmd):
+            break
+    if pc_configured and not pc_cmd:
+        log.info("pre-commit hook found, but no pre-commit or prek binary")
+
+    return pc_cmd
+
+
+def _get_arc_command() -> Optional[str]:
+    arc_configured = Path(".arcconfig").exists()
+    if not arc_configured:
+        return None
+
+    arc_bin = shutil.which("arc")
+    if arc_configured and not arc_bin:
+        log.info(".arcconfig found, but no arc binary")
+
+    return arc_bin
+
+
 def pre_commit(ref: Optional[str]) -> None:
     """Run pre-commit hooks on a stack of changes."""
-    if not Path(".git/hooks/pre-commit").exists():
-        log.info("No .git/hooks/pre-commit found, skipping pre-commit hooks")
-        return
-
-    pc_apps = ["prek", "pre-commit"]
-    pc_cmd = None
-    for cmd in pc_apps:
-        if shutil.which(cmd):
-            pc_cmd = cmd
-            break
-    if not pc_cmd:
-        log.info(f"No pre-commit app found ({', '.join(pc_apps)}), skipping pre-commit")
+    pc_cmd = _get_pc_command()
+    arc_cmd = _get_arc_command()
+    if not pc_cmd and not arc_cmd:
+        log.info("No pre-commit configuration found, skipping")
         return
 
     changes = (
@@ -59,24 +78,25 @@ def pre_commit(ref: Optional[str]) -> None:
         if ref
         else jj.current_stack(require_description=False)
     )
-    log.debug("Pre-commit checking all changes in the stack")
-    for change_id in changes:
+    for n, change_id in enumerate(changes):
+        if n > 0:
+            print("=" * 80)
         with jj.with_edit(change_id):
             files = jj.files_in(change_id)
+            files = [f for f in files if Path(f).exists()]
             descr = (jj.description_of(change_id).splitlines() or ["(untitled)"])[0]
-            if ref is None:
-                print("=" * 80)
-                print(f'Running {pc_cmd} on "{descr}" ({change_id})')
-                print(f"Affected files: {shlex.join(files)}")
-            else:
-                log.debug(f"Running {pc_cmd} on {change_id} ({shlex.join(files)})")
-            try:
-                files = [f for f in files if Path(f).exists()]
-                utils.run([pc_cmd, "run", "--files", *files], cap=False)
-            except FileNotFoundError:
-                raise
-            except Exception:
-                raise utils.UserError(f"Pre-commit failed for change {change_id}")
+            print(f'Checking "{descr}" ({change_id})')
+            print(f"Affected files: {shlex.join(files)}")
+            if pc_cmd:
+                try:
+                    utils.run([pc_cmd, "run", "--files", *files], cap=False)
+                except Exception:
+                    raise utils.UserError(f"{pc_cmd} failed for change {change_id}")
+            if arc_cmd:
+                try:
+                    utils.run([arc_cmd, "lint"], cap=False)
+                except Exception:
+                    raise utils.UserError(f"{pc_cmd} failed for change {change_id}")
 
 
 def display_list(items: List[CRListItem], multi: bool) -> None:
