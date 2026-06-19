@@ -80,6 +80,10 @@ export JJPR_TEST_PHABRICATOR_API_TOKEN=...
 open "http://phab.localhost:8081/settings/user/admin/page/vcspassword/"
 export JJPR_TEST_PHABRICATOR_VCS_PASSWORD=...
 
+# Create admin user, get a token from settings
+open "http://gitea.localhost:8082/user/settings/applications"
+export JJPR_TEST_GITEA_API_TOKEN=...
+
 # Run tests against the above forges
 uv run pytest -v --no-cov tests/integration
 

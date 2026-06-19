@@ -79,7 +79,19 @@ services:
             # start backend daemons
             runuser -u www-data bin/phd start
 
+  # Gitea
+  gitea:
+    image: docker.gitea.com/gitea:1.26.2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+    volumes:
+      - gitea_data:/data
+    ports:
+      - "8082:3000"
+      - "222:22"
+
 volumes:
   gerrit_data:
   phab_repo:
   phab_mysql:
+  gitea_data:
