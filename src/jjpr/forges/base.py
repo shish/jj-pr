@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import List, Optional
 
 import httpx
@@ -21,6 +21,12 @@ class CRListItem:
     state: str
     blockers: str
     extra: dict[str, str] = field(default_factory=dict)
+
+    def as_dict(self) -> dict:
+        d = asdict(self)
+        d["forge_url"] = str(self.forge_url)
+        d["url"] = str(self.url)
+        return d
 
 
 class ForgeException(Exception):

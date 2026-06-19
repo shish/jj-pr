@@ -1,4 +1,5 @@
 import logging
+import shlex
 import subprocess
 from typing import Literal, overload
 
@@ -26,7 +27,7 @@ def run(cmd: list[str]) -> str: ...
 
 
 def run(cmd: list[str], cap: bool = True) -> str | None:
-    log.debug(f"Executing command: {' '.join(cmd)}")
+    log.debug(f"Executing command: {shlex.join(cmd)}")
 
     try:
         result = subprocess.run(
@@ -41,7 +42,7 @@ def run(cmd: list[str], cap: bool = True) -> str | None:
         else:
             return None
     except subprocess.CalledProcessError as e:
-        log.info(f"Command failed: {' '.join(cmd)}")
+        log.info(f"Command failed: {shlex.join(cmd)}")
         log.debug(f"Return code: {e.returncode}")
         if cap:
             log.debug(f"stdout: {e.stdout.strip()}")

@@ -1,7 +1,8 @@
+import json
 import logging
 import sys
 from pathlib import Path
-from typing import Optional, cast, get_args
+from typing import Literal, Optional, cast, get_args
 
 import typer
 
@@ -13,10 +14,13 @@ app = typer.Typer(
 )
 log = logging.getLogger(__name__)
 
+OutputFormat = Literal["table", "json"]
+
 
 class GlobalOptions:
-    def __init__(self, repo: cmds.Repo) -> None:
+    def __init__(self, repo: cmds.Repo, format: OutputFormat) -> None:
         self.repo = repo
+        self.format = format
 
 
 @app.callback(invoke_without_command=False)
@@ -40,6 +44,11 @@ def main(
         help="Increase verbosity (-v for INFO, -vv for DEBUG)",
         count=True,
     ),
+    format: OutputFormat = typer.Option(
+        "table",
+        "--format",
+        help="Output format (only works with some commands)",
+    ),
 ) -> None:
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
     logging.basicConfig(level=log_level)
@@ -50,7 +59,7 @@ def main(
         except Exception as e:
             raise utils.UserError(f"Can't detect current repository: {e}")
 
-    ctx.obj = GlobalOptions(cmds.Repo(path, remote, forge))
+    ctx.obj = GlobalOptions(cmds.Repo(path, remote, forge), format)
 
 
 @app.command("push")
@@ -123,7 +132,8 @@ def list_command(
     ),
 ) -> None:
     """List my open PRs/CRs/Diffs for the current project."""
-    rs = [cast(GlobalOptions, ctx.obj).repo]
+    gos = cast(GlobalOptions, ctx.obj)
+    rs = [gos.repo]
 
     for extra in extra_repos:
         path, remote, forge = (extra.split(":") + [None, None, None])[:3]
@@ -137,10 +147,13 @@ def list_command(
     for r in rs:
         with r.chdir():
             items.extend(r.forge.list(all_projects))
-    if items:
-        cmds.display_list(items, multi=all_projects or len(rs) > 1)
+    if gos.format == "json":
+        print(json.dumps([item.as_dict() for item in items], indent=4))
     else:
-        print("No items found.")
+        if items:
+            cmds.display_list(items, multi=all_projects or len(rs) > 1)
+        else:
+            print("No items found.")
 
 
 @app.command("pre-commit")
