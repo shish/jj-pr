@@ -58,7 +58,7 @@ class Phabricator(Forge):
     def __init__(self, remote: str, remote_url: httpx.URL):
         super().__init__(remote, remote_url)
         self.client = PhabricatorClient(
-            token=_get_token(str(self.forge_url.host)),
+            token=_get_token(self.forge_url),
             base_url=self.forge_url,
         )
 
@@ -194,18 +194,18 @@ class Phabricator(Forge):
         ]
 
 
-def _get_token(hostname: str) -> str:
+def _get_token(url: httpx.URL) -> str:
     token = None
     arc_conf = Path.home() / ".arcrc"
     if arc_conf.exists():
         with open(arc_conf) as f:
             data = json.load(f)
-        for host, config in data.get("hosts", {}).items():
-            if host.startswith(hostname):
+        for url, config in data.get("hosts", {}).items():
+            if httpx.URL(url).host == url.host:
                 token = config.get("token")
                 break
     if not token:
-        raise utils.UserError(f"API token for {hostname} not found in ~/.arcrc")
+        raise utils.UserError(f"API token for {url.host} not found in ~/.arcrc")
     return token
 
 
