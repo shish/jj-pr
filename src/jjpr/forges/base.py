@@ -41,8 +41,14 @@ class Forge(ABC):
         Converts URLs like:
         - https://gerrit.mycompany.com/a/project -> https://gerrit.mycompany.com
         - https://github.com/owner/repo.git -> https://github.com
+        - ssh://git@phabricator.foo.com/bar/repo.git -> https://phabricator.foo.com
         """
-        return httpx.URL(f"{self.remote_url.scheme}://{self.remote_url.host}")
+        scheme = self.remote_url.scheme
+        if scheme not in ("http", "https"):
+            scheme = "https"
+        return httpx.URL(
+            scheme=scheme, host=self.remote_url.host, port=self.remote_url.port
+        )
 
     @property
     def project_id(self) -> str:
