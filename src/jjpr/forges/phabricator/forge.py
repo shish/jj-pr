@@ -58,11 +58,17 @@ class Phabricator(Forge):
         else:
             log.info(f"Creating new revision for {change_id}")
 
-        parents = jj.change_ids(f"{change_id}- & mutable()")
-        parent_revs = [self._change_to_revision(p) for p in parents]
-        parent_revs = [p for p in parent_revs if p is not None]
-        parent_phids = [self._revision_to_phid(p) for p in parent_revs]
+        # to-do list
+        data: dict[str, Any] = {
+            "transactions": [],
+        }
 
+        # Update an existing revision, if we have one
+        # (if not we'll create a new one)
+        if rev:
+            data["objectIdentifier"] = self._revision_to_phid(rev)
+
+        # Attach a diff
         diff_id = self.client.post(
             "differential.createrawdiff",
             data={
@@ -70,33 +76,43 @@ class Phabricator(Forge):
                 "repositoryPHID": self._callsign_to_phid(self.project_id),
             },
         ).json()["result"]["phid"]
+        data["transactions"].append({"type": "update", "value": diff_id})
 
-        data: dict[str, Any] = {
-            "transactions": [
-                {"type": "update", "value": diff_id},
-                {"type": "parents.set", "value": parent_phids},
-            ],
-        }
+        # Set parent diff if our parent commit contains a diff ID
+        parents = jj.change_ids(f"{change_id}- & mutable()")
+        parent_revs = [self._change_to_revision(p) for p in parents]
+        parent_revs = [p for p in parent_revs if p is not None]
+        parent_phids = [self._revision_to_phid(p) for p in parent_revs]
+        if parent_phids:
+            data["transactions"].append({"type": "parents.set", "value": parent_phids})
 
-        if rev:
-            data["objectIdentifier"] = self._revision_to_phid(rev)
-        else:
-            data["transactions"].extend(
-                self.client.post(
-                    "differential.parsecommitmessage",
-                    data={"corpus": jj.description_of(change_id)},
-                ).json()["result"]["transactions"]
-            )
+        # If we're creating a new rev, populate the metadata from the commit message
+        if not rev:
+            ts = self.client.post(
+                "differential.parsecommitmessage",
+                data={"corpus": jj.description_of(change_id)},
+            ).json()["result"]["transactions"]
+            for r in {"title", "summary", "testPlan"}:
+                for t in ts:
+                    if t["type"] == r:
+                        break
+                else:
+                    data["transactions"].append({"type": r, "value": "-"})
+            data["transactions"].extend(ts)
 
+        # If --draft, set that flag
         if draft:
             data["transactions"].append({"type": "draft", "value": "true"})
 
+        # Submit the new revision
         revision_id = self.client.post(
             "differential.revision.edit",
             data=data,
         ).json()["result"]["object"]["id"]
 
         # TODO: add a message if -m is passed
+
+        # If the Change didn't have a Revision already, attach it
         if not rev:
             jj.describe(
                 r=change_id,
