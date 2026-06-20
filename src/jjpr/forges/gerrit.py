@@ -27,6 +27,7 @@ class GerritClient(httpx.Client):
             raise utils.UserError(
                 f"Could not find credentials for {base_url.host} in ~/.netrc"
             )
+        base_url = base_url.copy_with(path="/a/")
         super().__init__(base_url=base_url, headers=headers)
 
     def request(self, *args, **kwargs) -> httpx.Response:
@@ -75,7 +76,7 @@ class Gerrit(Forge):
         log.info(f"Fetching Gerrit change {identifier}")
         # Query API to get the latest patch set number
         change_data_response = self.client.get(
-            f"/a/changes/{identifier}?o=CURRENT_REVISION"
+            f"changes/{identifier}?o=CURRENT_REVISION"
         ).json()
 
         # Ensure response is a dict
@@ -103,7 +104,7 @@ class Gerrit(Forge):
         if not all_projects:
             query += f"+project:{self.project_id}"
         changes_response = self.client.get(
-            f"/a/changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=DETAILED_ACCOUNTS"
+            f"changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=DETAILED_ACCOUNTS"
         ).json()
 
         crs: List[CRListItem] = []

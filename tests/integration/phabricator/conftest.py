@@ -42,7 +42,7 @@ def session(
 
     # check that the client works
     try:
-        response = client.post(url.join("/api/user.whoami"))
+        response = client.post("user.whoami")
         data = response.json()
         assert data["result"]["userName"] == "admin"
     except Exception as e:
@@ -63,7 +63,7 @@ def repo(
     repo_name = f"ztst-phab-{rand}"
     try:
         response = session.post(
-            url.join("/api/diffusion.repository.edit"),
+            "diffusion.repository.edit",
             data={
                 "transactions": [
                     {"type": "name", "value": repo_name},
@@ -86,7 +86,7 @@ def repo(
         yield repo_name
     finally:
         response = session.post(
-            url.join("/api/diffusion.repository.search"),
+            "diffusion.repository.search",
             data={"constraints": {"shortNames": [repo_name]}},
         )
         result = response.json()
@@ -99,7 +99,7 @@ def repo(
         if repos:
             repo_phid = repos[0]["phid"]
             session.post(
-                url.join("/api/diffusion.repository.edit"),
+                "diffusion.repository.edit",
                 data={
                     "objectIdentifier": repo_phid,
                     "transactions": [{"type": "status", "value": "inactive"}],

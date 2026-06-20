@@ -55,7 +55,7 @@ def repo(
     repo_name = f"ztst-gerr-{rand}"
     try:
         session.put(
-            url.join(f"/a/projects/{repo_name}"),
+            f"projects/{repo_name}",
             json={"create_empty_commit": True},
         )
     except Exception as e:
@@ -64,7 +64,7 @@ def repo(
     try:
         yield repo_name
     finally:
-        session.delete(url.join(f"/a/projects/{repo_name}"))
+        session.delete(f"projects/{repo_name}")
 
 
 @pytest.fixture
