@@ -115,7 +115,7 @@ class Phabricator(Forge):
     def _revision_to_phid(self, revision: PhRev) -> PhID:
         result = self.client.post(
             "differential.revision.search",
-            params={"constraints": {"ids": [revision]}},
+            data={"constraints": {"ids": [revision]}},
         ).json()["result"]
         if not result["data"]:
             raise exc.UserError(f"Revision D{revision} not found")
@@ -124,7 +124,7 @@ class Phabricator(Forge):
     def _callsign_to_phid(self, callsign: str) -> PhID:
         return self.client.post(
             "diffusion.repository.search",
-            params={"constraints": {"callsigns": [callsign]}},
+            data={"constraints": {"callsigns": [callsign]}},
         ).json()["result"]["data"][0]["phid"]
 
     def checkout(self, identifier: str) -> None:
@@ -155,7 +155,7 @@ class Phabricator(Forge):
             ]
         revs = self.client.post(
             "differential.revision.search",
-            params=rev_constraints,
+            data=rev_constraints,
         ).json()["result"]["data"]
 
         return [

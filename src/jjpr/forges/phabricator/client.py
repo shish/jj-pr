@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import parse_qs
 
 import httpx
 
@@ -39,8 +40,15 @@ class PhabricatorClient(httpx.Client):
 
     def request(self, *args, **kwargs) -> httpx.Response:
         response = super().request(*args, **kwargs)
+        kvs = []
+        for k, v in parse_qs(response.request.content.decode()).items():
+            kvs.append(f"{k}: {', '.join(v)}")
+        kvss = "\n     ".join(kvs)
         log.debug(
-            f"{response.request.method}({response.request.url}) -> {response.text}"
+            f"API call:\n"
+            f"  {response.request.method} {response.request.url} = {response.status_code}\n"
+            f"  <- {kvss}\n"
+            f"  -> {response.text}"
         )
         try:
             response.raise_for_status()

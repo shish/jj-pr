@@ -32,7 +32,10 @@ class GerritClient(httpx.Client):
     def request(self, *args, **kwargs) -> httpx.Response:
         response = super().request(*args, **kwargs)
         log.debug(
-            f"{response.request.method}({response.request.url}) -> {response.text}"
+            f"API call:\n"
+            f"  {response.request.method} {response.request.url} = {response.status_code}\n"
+            # f"  <- {parse_qs(response.request.content.decode())}\n"
+            f"  -> {response.text}"
         )
         try:
             response.raise_for_status()
