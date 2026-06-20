@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 def run_cmd(*args: str, cwd: Union[str, None] = None, text: bool = True) -> str:
-    log.info(f"Running test-setup command: {shlex.join(args)} in {cwd or os.getcwd()}")
+    log.info(f"Setup command: {shlex.join(args)} in {cwd or os.getcwd()}")
     try:
         result = subprocess.run(
             args,
@@ -26,11 +26,14 @@ def run_cmd(*args: str, cwd: Union[str, None] = None, text: bool = True) -> str:
         )
         return result.stdout.strip() if text else result.stdout
     except subprocess.CalledProcessError as e:
-        log.error(f"Command failed: {shlex.join(args)}")
-        log.error(f"Return code: {e.returncode}")
-        log.error(f"stdout: {e.stdout}")
-        log.error(f"stderr: {e.stderr}")
-        raise
+        raise Exception(
+            f"""
+Command failed: {shlex.join(args)}
+Return code: {e.returncode}
+stdout: {e.stdout}
+stderr: {e.stderr}
+        """.strip()
+        ) from None
 
 
 @pytest.fixture(scope="session")
