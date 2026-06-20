@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import os
@@ -36,89 +37,82 @@ stderr: {e.stderr}
         ) from None
 
 
+@contextlib.contextmanager
+def tmp_cwd() -> Generator[Path, None, None]:
+    """Create a temporary working directory for tests."""
+    tmp_dir = tempfile.mkdtemp(prefix="jjpr_cwd_")
+    original_dir = os.getcwd()
+    os.chdir(tmp_dir)
+    try:
+        yield Path(tmp_dir)
+    finally:
+        os.chdir(original_dir)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 @pytest.fixture(scope="session")
 def tmp_home() -> Generator[Path, None, None]:
     """Create a temporary home directory for tests, with git & jj configured."""
-    tmp_dir = tempfile.mkdtemp(prefix="jjpr_home_")
     original_home = os.environ.get("HOME", "")
-    original_cwd = os.getcwd()
-    os.environ["HOME"] = tmp_dir
-    os.environ["GIT_TERMINAL_PROMPT"] = "0"  # Disable git credential prompts
-    os.chdir(tmp_dir)
-    try:
-        home_lock = Path(tmp_dir) / ".jjpr-lock"
-        with FileLock(home_lock):
-            # configure .gitrc
-            run_cmd(
-                "git", "config", "set", "--global", "user.email", "test@example.com"
-            )
-            run_cmd("git", "config", "set", "--global", "user.name", "Test User")
+    with tmp_cwd() as tmp_dir:
+        try:
+            os.environ["HOME"] = str(tmp_dir)
+            os.environ["GIT_TERMINAL_PROMPT"] = "0"  # Disable git credential prompts
+            home_lock = Path(tmp_dir) / ".jjpr-lock"
+            with FileLock(home_lock):
+                # configure .gitrc
+                run_cmd(
+                    "git", "config", "set", "--global", "user.email", "test@example.com"
+                )
+                run_cmd("git", "config", "set", "--global", "user.name", "Test User")
 
-            # configure jj
-            run_cmd(
-                "jj",
-                "config",
-                "set",
-                "--user",
-                "aliases.pr",
-                json.dumps(["util", "exec", "--", shutil.which("jj-pr")]),
-            )
+                # configure jj
+                run_cmd(
+                    "jj",
+                    "config",
+                    "set",
+                    "--user",
+                    "aliases.pr",
+                    json.dumps(["util", "exec", "--", shutil.which("jj-pr")]),
+                )
 
-        yield Path(tmp_dir)
-    finally:
-        os.chdir(original_cwd)
-        os.environ["HOME"] = original_home
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+            yield Path(tmp_dir)
+        finally:
+            os.environ["HOME"] = original_home
 
 
 @pytest.fixture
 def tmp_repo(tmp_home: Path) -> Generator[Path, None, None]:
-    tmp_dir = tempfile.mkdtemp(prefix="jjpr_clone_")
-    original_dir = os.getcwd()
-
-    try:
-        remote_dir = tempfile.mkdtemp(prefix="jjpr_remote_")
-        os.chdir(remote_dir)
+    with tmp_cwd() as remote_dir:
         run_cmd("git", "init", "--bare", "-b", "main")
-
-        os.chdir(tmp_dir)
-        run_cmd("git", "clone", str(remote_dir), ".")
-        # a commit needs to exist before remote:HEAD exists
-        run_cmd("git", "commit", "--allow-empty", "-m", "Initial commit")
-        run_cmd("git", "push", "origin", "HEAD:main")
-        run_cmd("jj", "git", "init", ".")
-        run_cmd("jj", "bookmark", "track", "main", "--remote=origin")
-        yield Path(tmp_dir)
-    finally:
-        os.chdir(original_dir)
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        with tmp_cwd() as tmp_dir:
+            run_cmd("git", "clone", str(remote_dir), ".")
+            # a commit needs to exist before remote:HEAD exists
+            run_cmd("git", "commit", "--allow-empty", "-m", "Initial commit")
+            run_cmd("git", "push", "origin", "HEAD:main")
+            run_cmd("jj", "git", "init", ".")
+            run_cmd("jj", "bookmark", "track", "main", "--remote=origin")
+            yield Path(tmp_dir)
 
 
 @pytest.fixture
 def repo_with_commits(tmp_repo: Path) -> Generator[Path, None, None]:
-    original_dir = os.getcwd()
+    # Create initial commit - jj auto-tracks changes
+    Path("file1.txt").write_text("initial content")
+    run_cmd("jj", "commit", "-m", "Initial commit")
 
-    try:
-        os.chdir(tmp_repo)
+    # Create commit 1
+    Path("file2.txt").write_text("commit 1 content")
+    run_cmd("jj", "commit", "-m", "Commit 1")
 
-        # Create initial commit - jj auto-tracks changes
-        Path("file1.txt").write_text("initial content")
-        run_cmd("jj", "commit", "-m", "Initial commit")
+    # Create commit 2
+    Path("file3.txt").write_text("commit 2 content")
+    run_cmd("jj", "commit", "-m", "Commit 2")
+    run_cmd("jj", "bookmark", "create", "feat/commit-2")
 
-        # Create commit 1
-        Path("file2.txt").write_text("commit 1 content")
-        run_cmd("jj", "commit", "-m", "Commit 1")
+    # Create commit 3
+    Path("file4.txt").write_text("commit 3 content")
+    run_cmd("jj", "commit", "-m", "Commit 3")
+    run_cmd("jj", "bookmark", "create", "feat/commit-3")
 
-        # Create commit 2
-        Path("file3.txt").write_text("commit 2 content")
-        run_cmd("jj", "commit", "-m", "Commit 2")
-        run_cmd("jj", "bookmark", "create", "feat/commit-2")
-
-        # Create commit 3
-        Path("file4.txt").write_text("commit 3 content")
-        run_cmd("jj", "commit", "-m", "Commit 3")
-        run_cmd("jj", "bookmark", "create", "feat/commit-3")
-
-        yield tmp_repo
-    finally:
-        os.chdir(original_dir)
+    yield tmp_repo

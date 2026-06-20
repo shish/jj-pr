@@ -2,14 +2,13 @@ import os
 import random
 import shutil
 import string
-import tempfile
 from pathlib import Path
 from typing import Generator
 
 import httpx
 import pytest
 
-from ...conftest import run_cmd
+from ...conftest import run_cmd, tmp_cwd
 
 
 @pytest.fixture(scope="session")
@@ -105,15 +104,6 @@ def clone(
     url: httpx.URL,
     repo: str,
 ) -> Generator[Path, None, None]:
-    """Clone a test GitHub repository and initialize it with jj."""
-    tmp_dir = tempfile.mkdtemp(prefix="jjpr_clone_")
-    original_dir = os.getcwd()
-
-    try:
-        os.chdir(tmp_dir)
-        run_cmd("git", "clone", f"{url}/{repo}.git", ".")
-        run_cmd("jj", "git", "init", ".")
-        yield Path(tmp_dir)
-    finally:
-        os.chdir(original_dir)
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+    with tmp_cwd() as tmp_dir:
+        run_cmd("jj", "git", "clone", f"{url}/{repo}.git", ".")
+        yield tmp_dir
