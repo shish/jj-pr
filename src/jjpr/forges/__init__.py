@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 import httpx
 
-from .. import utils
+from .. import git, utils
 from .base import Forge
 from .gerrit import Gerrit
 from .github import GitHub
@@ -35,7 +35,7 @@ def detect_forge_from_url(url: httpx.URL) -> Optional[ForgeName]:
 
 
 def get_forge(forge: Optional[ForgeName], remote: str) -> Forge:
-    remote_url = utils.get_git_remote_url(remote)
+    remote_url = git.get_remote_url(remote)
 
     # If forge is explicitly specified, use that
     if not forge:

@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import httpx
 
-from .. import jj, utils
+from .. import git, jj, utils
 from .base import CRListItem, Forge
 
 log = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class Gerrit(Forge):
             r=range,
             wip=draft,
             message=message,
-            remote_branch=utils.get_merge_target(),
+            remote_branch=git.get_merge_target(),
         )
 
     def checkout(self, identifier: str) -> None:

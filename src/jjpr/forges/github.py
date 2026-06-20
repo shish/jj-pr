@@ -5,7 +5,7 @@ from typing import Any, List, Optional
 
 import httpx
 
-from .. import jj, utils
+from .. import git, jj, utils
 from .base import CRListItem, Forge
 
 log = logging.getLogger(__name__)
@@ -44,12 +44,12 @@ class GitHub(Forge):
                 raise ValueError(f"No description found for change {changes[-1]}")
             title = description.splitlines()[0]
             sanitized_title = re.sub(r"[^a-zA-Z0-9\-]+", "-", title).strip("-").lower()
-            pr_branch = utils.unique_branch_name(f"pr/{sanitized_title}")
+            pr_branch = git.unique_branch_name(f"pr/{sanitized_title}")
             log.info(f"Creating new PR branch: {pr_branch}")
             with jj.with_new(changes[-1]):
                 jj.bookmark_create(pr_branch, r=changes[-1])
                 jj.git_push(remote=self.remote, bookmark=pr_branch)
-                base = utils.get_merge_target()
+                base = git.get_merge_target()
                 args = [
                     "gh",
                     "pr",

@@ -85,7 +85,7 @@ def root() -> str:
 
 
 def change_ids(r: RevSet) -> list[ChangeID]:
-    return run(
+    lines = run(
         "log",
         "-r",
         r,
@@ -95,6 +95,7 @@ def change_ids(r: RevSet) -> list[ChangeID]:
         'self.change_id().short() ++ "\\n"',
         cap=True,
     ).split("\n")
+    return [line for line in lines if line]
 
 
 def change_id(revset: RevSet) -> ChangeID:

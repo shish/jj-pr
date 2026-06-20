@@ -109,7 +109,8 @@ class Phabricator(Forge):
         draft: bool = False,
         message: Optional[str] = None,
     ) -> None:
-        changes = jj.specified_or_stack(ref, require_description=False)
+        changes = jj.specified_or_stack(ref, require_description=True)
+        log.info(f"Pushing {ref} ({changes})")
         for change_id in changes:
             self._push_one(change_id, draft=draft, message=message)
             self._set_parents(change_id)
@@ -122,6 +123,8 @@ class Phabricator(Forge):
     ) -> None:
         with jj.with_new(change_id):
             log.info(f"Pushing {change_id}")
+            utils.run(["git", "log"], cap=True)
+            utils.run(["jj", "log"], cap=True)
             args = ["arc", "diff", "HEAD^"]
             if draft:
                 args.append("--draft")

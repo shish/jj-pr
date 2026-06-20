@@ -38,7 +38,7 @@ stderr: {e.stderr}
 
 @pytest.fixture(scope="session")
 def tmp_home() -> Generator[Path, None, None]:
-    """Create a temporary home directory for tests."""
+    """Create a temporary home directory for tests, with git & jj configured."""
     tmp_dir = tempfile.mkdtemp(prefix="jjpr_home_")
     original_home = os.environ.get("HOME", "")
     original_cwd = os.getcwd()
@@ -72,24 +72,22 @@ def tmp_home() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def tmp_repo() -> Generator[Path, None, None]:
-    """Create a temporary jj (Jujutsu) repository with git backend.
-
-    Yields:
-        Path to the temporary jj repository.
-    """
-    tmp_dir = tempfile.mkdtemp(prefix="jjpr_jj_")
+def tmp_repo(tmp_home: Path) -> Generator[Path, None, None]:
+    tmp_dir = tempfile.mkdtemp(prefix="jjpr_clone_")
     original_dir = os.getcwd()
 
     try:
+        remote_dir = tempfile.mkdtemp(prefix="jjpr_remote_")
+        os.chdir(remote_dir)
+        run_cmd("git", "init", "--bare", "-b", "main")
+
         os.chdir(tmp_dir)
-        # Initialize git repo first
-        run_cmd("git", "init")
-        run_cmd("git", "config", "user.email", "test@example.com")
-        run_cmd("git", "config", "user.name", "Test User")
-        run_cmd("git", "branch", "-m", "main")
-        # Initialize jj repo using git backend
+        run_cmd("git", "clone", str(remote_dir), ".")
+        # a commit needs to exist before remote:HEAD exists
+        run_cmd("git", "commit", "--allow-empty", "-m", "Initial commit")
+        run_cmd("git", "push", "origin", "HEAD:main")
         run_cmd("jj", "git", "init", ".")
+        run_cmd("jj", "bookmark", "track", "main", "--remote=origin")
         yield Path(tmp_dir)
     finally:
         os.chdir(original_dir)
@@ -98,15 +96,6 @@ def tmp_repo() -> Generator[Path, None, None]:
 
 @pytest.fixture
 def repo_with_commits(tmp_repo: Path) -> Generator[Path, None, None]:
-    """Create a jj repository with initial commits and branches.
-
-    Creates:
-    - Initial commit on main/trunk
-    - 3 commits in a stack
-
-    Yields:
-        Path to the jj repository with commits.
-    """
     original_dir = os.getcwd()
 
     try:
@@ -123,94 +112,13 @@ def repo_with_commits(tmp_repo: Path) -> Generator[Path, None, None]:
         # Create commit 2
         Path("file3.txt").write_text("commit 2 content")
         run_cmd("jj", "commit", "-m", "Commit 2")
+        run_cmd("jj", "bookmark", "create", "feat/commit-2")
 
         # Create commit 3
         Path("file4.txt").write_text("commit 3 content")
         run_cmd("jj", "commit", "-m", "Commit 3")
+        run_cmd("jj", "bookmark", "create", "feat/commit-3")
 
         yield tmp_repo
     finally:
         os.chdir(original_dir)
-
-
-@pytest.fixture
-def repo_with_branches(tmp_repo: Path) -> Generator[Path, None, None]:
-    """Create a jj repository with commits and bookmarks (branches).
-
-    Creates:
-    - Initial commit
-    - feature-1 bookmark
-    - feature-2 bookmark
-
-    Yields:
-        Path to the jj repository with bookmarks.
-    """
-    original_dir = os.getcwd()
-
-    try:
-        os.chdir(tmp_repo)
-
-        # Create initial commit
-        Path("base.txt").write_text("base content")
-        run_cmd("jj", "commit", "-m", "Base commit")
-
-        # Get current change id
-        base_change_id = run_cmd(
-            "jj", "log", "-r", "@", "--no-graph", "-T", "change_id.short()"
-        )
-
-        # Create feature-1 with bookmark
-        Path("feature1.txt").write_text("feature 1 content")
-        run_cmd("jj", "commit", "-m", "Feature 1")
-        run_cmd("jj", "bookmark", "create", "feature-1")
-
-        # Move back to base and create feature-2
-        run_cmd("jj", "edit", base_change_id)
-        Path("feature2.txt").write_text("feature 2 content")
-        run_cmd("jj", "commit", "-m", "Feature 2")
-        run_cmd("jj", "bookmark", "create", "feature-2")
-
-        yield tmp_repo
-    finally:
-        os.chdir(original_dir)
-
-
-@pytest.fixture
-def repo_with_remote(
-    tmp_repo: Path,
-) -> Generator[tuple[Path, Path], None, None]:
-    """Create a git repository with a configured remote.
-
-    Creates:
-    - Local git repository
-    - Remote git repository
-    - Remote configured as 'origin'
-
-    Yields:
-        Tuple of (local_repo_path, remote_repo_path).
-    """
-    original_dir = os.getcwd()
-
-    remote_dir = None
-    try:
-        # Create remote repository
-        remote_dir = tempfile.mkdtemp(prefix="jjpr_remote_")
-        os.chdir(remote_dir)
-        run_cmd("git", "init", "--bare")
-        run_cmd("git", "symbolic-ref", "HEAD", "refs/heads/main")
-
-        # Configure local repo with remote
-        os.chdir(tmp_repo)
-        run_cmd("git", "remote", "add", "origin", remote_dir)
-
-        # Create and push initial commit
-        Path("file.txt").write_text("content")
-        run_cmd("git", "add", "file.txt")
-        run_cmd("git", "commit", "-m", "Initial")
-        run_cmd("git", "push", "-u", "origin", "main")
-
-        yield (tmp_repo, Path(remote_dir))
-    finally:
-        os.chdir(original_dir)
-        if remote_dir:
-            shutil.rmtree(remote_dir, ignore_errors=True)
