@@ -64,7 +64,20 @@ def repo(
     try:
         yield repo_name
     finally:
-        session.delete(f"projects/{repo_name}")
+        try:
+            # Delete all outstanding changes before deleting the project
+            changes = session.get(
+                "changes",
+                params={"q": f"status:open project:{repo_name}"},
+            ).json()
+            for change in changes:
+                change_id = change["id"]
+                session.delete(f"changes/{change_id}")
+
+            # Delete the project
+            session.delete(f"projects/{repo_name}")
+        except Exception as e:
+            pytest.fail(f"Gerrit repo deletion error: {url}: {e}")
 
 
 @pytest.fixture
