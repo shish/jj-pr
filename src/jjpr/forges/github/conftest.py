@@ -63,7 +63,7 @@ def repo(
     url: httpx.URL,
     api_url: httpx.URL,
     session: httpx.Client,
-) -> Generator[str, None, None]:
+) -> Generator[httpx.URL, None, None]:
     """Create and cleanup a test repository on GitHub."""
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
     repo_name = f"ztst-ghub-{rand}"
@@ -93,17 +93,14 @@ def repo(
     # import time
     # time.sleep(60)
     try:
-        yield f"{github_username}/{repo_name}"
+        yield url.join(f"{github_username}/{repo_name}")
     finally:
         response = session.delete(api_url.join(f"repos/{github_username}/{repo_name}"))
         response.raise_for_status()
 
 
 @pytest.fixture
-def clone(
-    url: httpx.URL,
-    repo: str,
-) -> Generator[Path, None, None]:
+def clone(repo: httpx.URL) -> Generator[Path, None, None]:
     with tmp_cwd() as tmp_dir:
-        run_cmd("jj", "git", "clone", f"{url}/{repo}.git", ".")
+        run_cmd("jj", "git", "clone", str(repo), ".")
         yield tmp_dir

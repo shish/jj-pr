@@ -48,7 +48,7 @@ def session(
 def repo(
     url: httpx.URL,
     session: GerritClient,
-) -> Generator[str, None, None]:
+) -> Generator[httpx.URL, None, None]:
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
     repo_name = f"ztst-gerr-{rand}"
     try:
@@ -60,7 +60,7 @@ def repo(
         pytest.skip(f"Gerrit repo creation error: {url}: {e}")
 
     try:
-        yield repo_name
+        yield url.join(f"/{repo_name}.git")
     finally:
         try:
             # Delete all outstanding changes before deleting the project
@@ -79,10 +79,7 @@ def repo(
 
 
 @pytest.fixture
-def clone(
-    url: httpx.URL,
-    repo: str,
-) -> Generator[Path, None, None]:
+def clone(repo: httpx.URL) -> Generator[Path, None, None]:
     with tmp_cwd() as tmp_dir:
-        run_cmd("jj", "git", "clone", f"{url}/{repo}.git", ".")
+        run_cmd("jj", "git", "clone", str(repo), ".")
         yield tmp_dir

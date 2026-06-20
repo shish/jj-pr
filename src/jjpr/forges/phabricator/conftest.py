@@ -66,7 +66,7 @@ def session(
 def repo(
     url: httpx.URL,
     session: httpx.Client,
-) -> Generator[str, None, None]:
+) -> Generator[httpx.URL, None, None]:
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
     repo_name = f"ztst-phab-{rand}"
     try:
@@ -87,18 +87,19 @@ def repo(
         pytest.skip(f"Phabricator repo creation error: {url}: {e}")
 
     try:
+        callsign = f"ZTST{rand.upper()}"
+        repo_url = url.join(f"/source/{repo_name}.git")
         # jj can't tell which branch is trunk() if we clone a totally bare repo,
         # and arc gets confused if .arcconfig is missing, so let's pre-populate
         # those as part of the repo creation process.
         with tmp_cwd():
-            callsign = f"ZTST{rand.upper()}"
             for attempt in tc.Retrying(
                 stop=tc.stop_after_attempt(5),
                 wait=tc.wait_fixed(5),
                 reraise=True,
             ):
                 with attempt:
-                    run_cmd("git", "clone", f"{url}/source/{repo_name}.git", ".")
+                    run_cmd("git", "clone", str(repo_url), ".")
             data = {
                 "phabricator.uri": str(url),
                 "repository.callsign": callsign,
@@ -108,7 +109,7 @@ def repo(
             run_cmd("git", "commit", "-m", "Initial commit with .arcconfig")
             run_cmd("git", "push")
 
-        yield repo_name
+        yield repo_url
     finally:
         response = session.post(
             "diffusion.repository.search",
@@ -128,10 +129,7 @@ def repo(
 
 
 @pytest.fixture
-def clone(
-    url: httpx.URL,
-    repo: str,
-) -> Generator[Path, None, None]:
+def clone(repo: httpx.URL) -> Generator[Path, None, None]:
     with tmp_cwd() as tmp_dir:
-        run_cmd("jj", "git", "clone", f"{url}/{repo}.git", ".")
+        run_cmd("jj", "git", "clone", str(repo), ".")
         yield tmp_dir
