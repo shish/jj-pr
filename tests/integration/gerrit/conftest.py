@@ -27,20 +27,21 @@ def session(
 ) -> Generator[GerritClient, None, None]:
     # configure .netrc
     gerrit_token = os.getenv("JJPR_TEST_GERRIT_API_TOKEN")
-    if gerrit_token:
-        rc = Path(tmp_home) / ".netrc"
-        rc.write_text(f"machine {url.host}\nlogin admin\npassword {gerrit_token}\n")
-        rc.chmod(0o600)
+    if not gerrit_token:
+        pytest.skip("JJPR_TEST_GERRIT_API_TOKEN not set, skipping tests")
+
+    rc = Path(tmp_home) / ".netrc"
+    rc.write_text(f"machine {url.host}\nlogin admin\npassword {gerrit_token}\n")
+    rc.chmod(0o600)
 
     client = GerritClient(url)
 
-    # check that the client works
     try:
-        client.get(url)
-    except Exception as e:
-        pytest.skip(f"Gerrit server error: {e}")
-
-    try:
+        # check that the client works
+        try:
+            client.get(url)
+        except Exception as e:
+            pytest.skip(f"Gerrit server seems broken, skipping tests: {e}")
         yield client
     finally:
         client.close()
@@ -85,7 +86,7 @@ def clone(
     url: httpx.URL,
     repo: str,
 ) -> Generator[Path, None, None]:
-    tmp_dir = tempfile.mkdtemp(prefix="jjpr_gerrit_")
+    tmp_dir = tempfile.mkdtemp(prefix="jjpr_clone_")
     original_dir = os.getcwd()
 
     try:

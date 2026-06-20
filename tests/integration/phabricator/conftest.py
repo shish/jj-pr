@@ -31,8 +31,9 @@ def session(
     # configure .arcrc
     phabricator_token = os.getenv("JJPR_TEST_PHABRICATOR_API_TOKEN")
     if not phabricator_token:
-        pytest.skip("JJPR_TEST_PHABRICATOR_API_TOKEN environment variable not set")
-    data = {"hosts": {str(url): {"token": phabricator_token}}}
+        pytest.skip("JJPR_TEST_PHABRICATOR_API_TOKEN not set, skipping tests")
+
+    data = {"hosts": {str(url) + "/api/": {"token": phabricator_token}}}
     rc = Path(tmp_home) / ".arcrc"
     rc.write_text(json.dumps(data))
     rc.chmod(0o600)
@@ -42,13 +43,13 @@ def session(
 
     # check that the client works
     try:
-        response = client.post("user.whoami")
-        data = response.json()
-        assert data["result"]["userName"] == "admin"
-    except Exception as e:
-        pytest.skip(f"Invalid Phabricator API token or unable to authenticate: {e}")
-
-    try:
+        if not shutil.which("arc"):
+            pytest.skip("`arc` command not found, skipping tests")
+        try:
+            data = client.post("user.whoami").json()["result"]
+            assert data["userName"] == "admin"
+        except Exception as e:
+            pytest.skip(f"Phabricator server seems broken, skipping tests: {e}")
         yield client
     finally:
         client.close()
@@ -112,19 +113,20 @@ def clone(
     url: httpx.URL,
     repo: str,
 ) -> Generator[Path, None, None]:
-    tmp_dir = tempfile.mkdtemp(prefix="jjpr_phab_")
+    tmp_dir = tempfile.mkdtemp(prefix="jjpr_clone_")
     original_dir = os.getcwd()
 
     try:
         os.chdir(tmp_dir)
         run_cmd("git", "clone", f"{url}/{repo}.git", ".")
-        run_cmd("jj", "git", "init", ".")
         data = {
             "phabricator.uri": str(url),
             "repository.callsign": f"ZTST{repo[-4:].upper()}",
         }
         Path(".arcconfig").write_text(json.dumps(data))
-        run_cmd("jj", "commit", "-m", "Initial commit with .arcconfig")
+        run_cmd("git", "add", ".arcconfig")
+        run_cmd("git", "commit", "-m", "Initial commit with .arcconfig")
+        run_cmd("jj", "git", "init", ".")
         yield Path(tmp_dir)
     finally:
         os.chdir(original_dir)

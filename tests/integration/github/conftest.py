@@ -35,7 +35,7 @@ def session(
     """Create and validate a GitHub API session."""
     token = os.getenv("JJPR_TEST_GITHUB_API_TOKEN")
     if not token:
-        pytest.skip("JJPR_TEST_GITHUB_API_TOKEN environment variable not set")
+        pytest.skip("JJPR_TEST_GITHUB_API_TOKEN not set, skipping tests")
 
     client = httpx.Client(
         headers={
@@ -45,14 +45,15 @@ def session(
         }
     )
 
-    # Check that the client works
     try:
-        response = client.get(api_url.join("user"))
-        response.raise_for_status()
-    except Exception as e:
-        pytest.skip(f"GitHub API error or invalid token: {e}")
-
-    try:
+        # Check that the client works
+        if not shutil.which("gh"):
+            pytest.skip("`gh` command not found, skipping tests")
+        try:
+            response = client.get(api_url.join("user"))
+            response.raise_for_status()
+        except Exception as e:
+            pytest.skip(f"GitHub server seems broken, skipping tests: {e}")
         yield client
     finally:
         client.close()
@@ -105,7 +106,7 @@ def clone(
     repo: str,
 ) -> Generator[Path, None, None]:
     """Clone a test GitHub repository and initialize it with jj."""
-    tmp_dir = tempfile.mkdtemp(prefix="jjpr_ghub_")
+    tmp_dir = tempfile.mkdtemp(prefix="jjpr_clone_")
     original_dir = os.getcwd()
 
     try:
