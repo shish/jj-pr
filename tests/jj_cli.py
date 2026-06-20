@@ -4,6 +4,7 @@
 import logging
 
 import typer
+
 from jjpr import jj
 
 log = logging.getLogger(__name__)
@@ -24,12 +25,22 @@ def current_stack_cmd():
         typer.echo(changeid)
 
 
-@app.command(name="revset-to-changeid")
+@app.command(name="change-id")
 def revset_to_changeid_cmd(
     revset: str = typer.Argument(..., help="The revset expression to convert"),
 ):
     result = jj.change_id(revset)
     typer.echo(result)
+
+
+@app.command(name="parents-of")
+def parents_of_cmd(
+    revset: str = typer.Argument(..., help="The revset expression to convert"),
+):
+    change_id = jj.change_id(revset)
+    result = jj.parents_of(change_id)
+    for parent in result:
+        typer.echo(parent)
 
 
 @app.command("branches-pointing-to")

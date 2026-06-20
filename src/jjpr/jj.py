@@ -92,7 +92,7 @@ def change_ids(r: RevSet) -> list[ChangeID]:
         "--no-graph",
         "--reversed",
         "-T",
-        "self.change_id().short() ++ '\n'",
+        'self.change_id().short() ++ "\\n"',
         cap=True,
     ).split("\n")
 
@@ -131,17 +131,19 @@ def change_info(change_id: ChangeID, t: str) -> str:
 
 
 def parents_of(change_id: ChangeID) -> list[ChangeID]:
-    output = change_info(change_id, "parents.map(|p| p.change_id().short()).join('\n')")
+    output = change_info(
+        change_id, 'parents.map(|p| p.change_id().short()).join("\\n")'
+    )
     return [p for p in output.split("\n") if p]
 
 
 def files_in(change_id: ChangeID) -> list[str]:
-    output = change_info(change_id, "self.diff().files().map(|f| f.path()).join('\n')")
+    output = change_info(change_id, 'self.diff().files().map(|f| f.path()).join("\\n")')
     return [f for f in output.split("\n") if f]
 
 
 def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> list[str]:
-    output = change_info(change_id, "self.bookmarks().map(|b| b.name()).join('\n')")
+    output = change_info(change_id, 'self.bookmarks().map(|b| b.name()).join("\\n")')
     return [b for b in output.split("\n") if b and b.startswith(prefix)]
 
 
