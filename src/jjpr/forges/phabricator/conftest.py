@@ -10,9 +10,8 @@ from typing import Generator
 import httpx
 import pytest
 
-from jjpr.forges.phabricator import PhabricatorClient
-
 from ...conftest import run_cmd
+from .client import PhabricatorClient
 
 
 @pytest.fixture(scope="session")

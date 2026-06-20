@@ -4,7 +4,7 @@ import subprocess
 from contextlib import contextmanager
 from typing import Literal, overload
 
-from . import utils
+from . import exec
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def run(*args: str) -> str: ...
 
 def run(*args: str, cap: bool = True) -> str | None:
     try:
-        return utils.run(["jj"] + list(args), cap=cap)
+        return exec.run(["jj"] + list(args), cap=cap)
     except subprocess.CalledProcessError as e:
         raise JjError(f"Failed to run {shlex.join(['jj'] + list(args))!r}") from e
 

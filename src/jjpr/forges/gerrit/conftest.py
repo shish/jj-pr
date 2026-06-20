@@ -9,9 +9,8 @@ from typing import Generator
 import httpx
 import pytest
 
-from jjpr.forges.gerrit import GerritClient
-
 from ...conftest import run_cmd
+from .client import GerritClient
 
 
 @pytest.fixture(scope="session")

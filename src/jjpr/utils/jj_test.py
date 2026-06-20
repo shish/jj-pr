@@ -3,9 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from jjpr import jj
-
-from .conftest import run_cmd
+from ..conftest import run_cmd
+from . import jj
 
 log = logging.getLogger(__name__)
 

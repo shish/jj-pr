@@ -6,12 +6,6 @@ from typing import Literal, overload
 log = logging.getLogger(__name__)
 
 
-class UserError(Exception):
-    """Exception raised for user errors (no stack trace)."""
-
-    pass
-
-
 @overload
 def run(cmd: list[str], cap: Literal[True]) -> str: ...
 

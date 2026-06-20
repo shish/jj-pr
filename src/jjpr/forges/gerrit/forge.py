@@ -1,56 +1,14 @@
-import base64
 import logging
 import re
-from netrc import NetrcParseError, netrc
 from typing import List, Optional
 
 import httpx
 
-from .. import git, jj, utils
-from .base import CRListItem, Forge
+from ...utils import exec, git, jj
+from ..base import CRListItem, Forge
+from .client import GerritClient
 
 log = logging.getLogger(__name__)
-
-
-class GerritClient(httpx.Client):
-    """Custom httpx.Client for Gerrit.
-
-    - Loads credentials from ~/.netrc.
-    - Adds HTTP Basic Auth header to requests.
-    - Strips Gerrit's magic prefix from JSON responses.
-    - Raises exceptions on HTTP errors
-    """
-
-    def __init__(self, base_url: httpx.URL) -> None:
-        headers = _get_auth_header(base_url.host)
-        if not headers:
-            raise utils.UserError(
-                f"Could not find credentials for {base_url.host} in ~/.netrc"
-            )
-        super().__init__(
-            base_url=base_url.copy_with(path="/a/"),
-            headers=headers,
-        )
-
-    def request(self, *args, **kwargs) -> httpx.Response:
-        response = super().request(*args, **kwargs)
-        log.debug(
-            f"{response.request.method}({response.request.url}) -> {response.text}"
-        )
-        try:
-            response.raise_for_status()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401:
-                raise utils.UserError(
-                    "Authentication failed. Check your ~/.netrc credentials."
-                )
-            e.add_note(e.response.text)
-            raise
-        # Gerrit API returns a magic prefix that needs to be stripped
-        cleaned_text = response.text.lstrip(")]}':\n")
-        # Replace the response text with cleaned content
-        response._content = cleaned_text.encode()
-        return response
 
 
 class Gerrit(Forge):
@@ -97,8 +55,8 @@ class Gerrit(Forge):
 
         # Fetch the latest patch set
         remote_id = f"refs/remotes/{self.remote}/change-{identifier}"
-        utils.run(["git", "fetch", self.remote, f"{current_rev}:{remote_id}"])
-        utils.run(["git", "checkout", remote_id])
+        exec.run(["git", "fetch", self.remote, f"{current_rev}:{remote_id}"])
+        exec.run(["git", "checkout", remote_id])
 
     def list(self, all_projects: bool = False) -> List[CRListItem]:
         """List the user's open changes in Gerrit, showing any blockers."""
@@ -138,31 +96,6 @@ class Gerrit(Forge):
             )
 
         return crs
-
-
-def _get_auth_header(hostname: str | None) -> Optional[dict]:
-    try:
-        rc = netrc()
-    except (FileNotFoundError, NetrcParseError) as e:
-        log.warning(f"Could not get creds from netrc file: {e}")
-        return None
-
-    if not hostname:
-        log.warning("Could not determine hostname from forge_url")
-        return None
-
-    auth = rc.authenticators(hostname)
-    if not auth:
-        log.warning(f"No credentials found in netrc for {hostname}")
-        return None
-
-    login, _, password = auth
-    if not password:
-        log.warning(f"Empty password in netrc for {hostname}")
-        return None
-
-    credentials = base64.b64encode(f"{login}:{password}".encode()).decode()
-    return {"Authorization": f"Basic {credentials}"}
 
 
 def _colour_state(

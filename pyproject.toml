@@ -31,7 +31,10 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/jjpr"]
 
+[tool.coverage.run]
+omit = ["*_test.py"]
+
 [tool.pytest.ini_options]
-testpaths = ["tests/"]
-python_files = ["*.py"]
+#testpaths = ["tests/"]
+#python_files = ["*.py"]
 addopts = "--cov=jjpr --cov-report=term-missing"

@@ -9,22 +9,24 @@ from typing import List, Optional
 from rich.console import Console
 from rich.table import Table
 
-from . import forges, jj, utils
+from . import exc
+from .forges import detect
 from .forges.base import CRListItem
+from .utils import exec, jj
 
 log = logging.getLogger(__name__)
 
 
 class Repo:
     def __init__(
-        self, path: Path, remote: Optional[str], forge_type: Optional[forges.ForgeName]
+        self, path: Path, remote: Optional[str], forge_type: Optional[detect.ForgeName]
     ):
         # spec = /path/to/repo:remote:forge where remote and forge are optional
         # eg ~/Projects/jjpp:origin
         self.path = path.resolve()
         with self.chdir():
-            default_remote = utils.run(["git", "remote"]).splitlines()[0]
-            forge = forges.get_forge(forge_type, remote or default_remote)
+            default_remote = exec.run(["git", "remote"]).splitlines()[0]
+            forge = detect.get_forge(forge_type, remote or default_remote)
         self.forge = forge
 
     @contextmanager
@@ -85,14 +87,14 @@ def pre_commit(ref: Optional[str]) -> None:
             print(f"Affected files: {shlex.join(files)}")
             if pc_cmd:
                 try:
-                    utils.run([pc_cmd, "run", "--files", *files], cap=False)
+                    exec.run([pc_cmd, "run", "--files", *files], cap=False)
                 except Exception:
-                    raise utils.UserError(f"{pc_cmd} failed for change {change_id}")
+                    raise exc.UserError(f"{pc_cmd} failed for change {change_id}")
             if arc_cmd:
                 try:
-                    utils.run([arc_cmd, "lint", "--apply-patches"], cap=False)
+                    exec.run([arc_cmd, "lint", "--apply-patches"], cap=False)
                 except Exception:
-                    raise utils.UserError(f"{arc_cmd} failed for change {change_id}")
+                    raise exc.UserError(f"{arc_cmd} failed for change {change_id}")
 
 
 def display_list(items: List[CRListItem], multi: bool) -> None:

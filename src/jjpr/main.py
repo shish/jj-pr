@@ -6,7 +6,9 @@ from typing import Literal, Optional, cast, get_args
 
 import typer
 
-from . import cmds, forges, jj, utils
+from . import cmds, exc
+from .forges import detect
+from .utils import jj
 
 app = typer.Typer(
     help="Unified CLI for multiple code review forges",
@@ -34,7 +36,7 @@ def main(
     remote: Optional[str] = typer.Option(
         None, "--remote", help="Which remote to work with"
     ),
-    forge: Optional[forges.ForgeName] = typer.Option(
+    forge: Optional[detect.ForgeName] = typer.Option(
         None, "--forge", help="Which forge backend to use"
     ),
     verbose: int = typer.Option(
@@ -60,7 +62,7 @@ def main(
         try:
             path = Path(jj.root())
         except Exception as e:
-            raise utils.UserError(f"Can't detect current repository: {e}")
+            raise exc.UserError(f"Can't detect current repository: {e}")
 
     ctx.obj = GlobalOptions(cmds.Repo(path, remote, forge), format)
 
@@ -142,8 +144,8 @@ def list_command(
         path, remote, forge = (extra.split(":") + [None, None, None])[:3]
         assert path is not None
         if forge is not None:
-            assert forge in get_args(forges.ForgeName)
-            forge = cast(forges.ForgeName, forge)
+            assert forge in get_args(detect.ForgeName)
+            forge = cast(detect.ForgeName, forge)
         rs.append(cmds.Repo(Path(path), remote, forge))
 
     items = []
@@ -173,6 +175,6 @@ def pre_commit_command(
 def run() -> None:
     try:
         app()
-    except utils.UserError as e:
+    except exc.UserError as e:
         typer.echo(f"Error: {e}", err=True)
         sys.exit(1)

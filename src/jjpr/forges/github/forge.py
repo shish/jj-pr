@@ -5,8 +5,8 @@ from typing import Any, List, Optional
 
 import httpx
 
-from .. import git, jj, utils
-from .base import CRListItem, Forge
+from ...utils import exec, git, jj
+from ..base import CRListItem, Forge
 
 log = logging.getLogger(__name__)
 
@@ -64,11 +64,11 @@ class GitHub(Forge):
                     args.append("--draft")
                 if message:
                     args.extend(["-b", message])
-                utils.run(args)
+                exec.run(args)
 
     def checkout(self, identifier: str) -> None:
         log.info(f"Checking out PR {identifier} from {self.remote_url}")
-        utils.run(
+        exec.run(
             [
                 "gh",
                 "pr",
@@ -94,7 +94,7 @@ class GitHub(Forge):
             "--json",
             "number,title,state,url,statusCheckRollup,isDraft,reviews",
         ]
-        prs = json.loads(utils.run(cmd))
+        prs = json.loads(exec.run(cmd))
         crs: list[CRListItem] = []
         c2c = {
             "SUCCESS": "green",

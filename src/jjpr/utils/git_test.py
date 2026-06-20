@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from jjpr import git, utils
-
-from .conftest import run_cmd
+from .. import exc
+from ..conftest import run_cmd
+from . import git
 
 
 class TestGetMergeTarget:
@@ -17,7 +17,7 @@ class TestGetMergeTarget:
         assert target == "main"
 
     def test_invalid_remote(self, tmp_repo: Path):
-        with pytest.raises(utils.UserError):
+        with pytest.raises(exc.UserError):
             git.get_merge_target("nonexistent")
 
 
@@ -27,7 +27,7 @@ class TestGetGitRemoteUrl:
         assert url is not None
 
     def test_nonexistent_remote(self, tmp_repo: Path):
-        with pytest.raises(utils.UserError):
+        with pytest.raises(exc.UserError):
             git.get_remote_url("nonexistent")
 
     def test_default_remote(self, tmp_repo: Path):
@@ -36,7 +36,7 @@ class TestGetGitRemoteUrl:
 
     def test_default_no_remote(self, tmp_repo: Path):
         run_cmd("git", "remote", "remove", "origin")
-        with pytest.raises(utils.UserError):
+        with pytest.raises(exc.UserError):
             git.get_remote_url()
 
 

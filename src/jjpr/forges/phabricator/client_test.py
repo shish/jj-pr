@@ -1,6 +1,6 @@
 import logging
 
-from jjpr.forges import phabricator
+from .client import PhabricatorClient
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class TestPhabricatorClient:
             "key3": ["listitem3", {"subkey3": "subvalue3"}],
         }
         formed_params = {}
-        phabricator.PhabricatorClient._struct2http(
+        PhabricatorClient._struct2http(
             base=None, formed_params=formed_params, params=params
         )
         expected = {
