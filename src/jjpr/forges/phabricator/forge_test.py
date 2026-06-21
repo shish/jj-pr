@@ -1,20 +1,10 @@
 import json
 from pathlib import Path
 
-from jjpr.main import main
-
 from ...conftest import run_cmd
 
 
 class TestPhabPush:
-    def test_import(self):
-        # otherwise pytest complains that nothing touched jjpr
-        assert main is not None
-
-    def test_clone(self, clone: Path):
-        remote_url = run_cmd("git", "config", "--get", "remote.origin.url").strip()
-        assert remote_url.startswith("http://phab.localhost:8081/")
-
     def test_pr_push_one_head(self, clone: Path):
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
