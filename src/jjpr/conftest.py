@@ -7,23 +7,30 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Generator, Union
+from typing import Generator
 
 import pytest
 from filelock import FileLock
+from typer.testing import CliRunner
+
+from . import main
 
 log = logging.getLogger(__name__)
 
 
-def run_cmd(*args: str, cwd: Union[str, None] = None, text: bool = True) -> str:
-    log.info(f"Setup command: {shlex.join(args)} in {cwd or os.getcwd()}")
+def run_cmd(*args: str, text: bool = True) -> str:
+    log.info(f"Setup command: {shlex.join(args)} in {os.getcwd()}")
+
+    # Handle jj-pr commands by calling main.py directly
+    if len(args) >= 2 and args[0] == "jj" and args[1] == "pr":
+        return _run_jjpr_cmd(args[2:])
+
     try:
         result = subprocess.run(
             args,
             check=True,
             capture_output=True,
             text=text,
-            cwd=cwd,
         )
         return result.stdout.strip() if text else result.stdout
     except subprocess.CalledProcessError as e:
@@ -35,6 +42,20 @@ stdout: {e.stdout}
 stderr: {e.stderr}
         """.strip()
         ) from None
+
+
+def _run_jjpr_cmd(args: tuple[str, ...]) -> str:
+    """Run jj-pr command directly via main.py instead of subprocess."""
+
+    runner = CliRunner()
+    result = runner.invoke(main.app, args)
+    if result.exit_code != 0:
+        raise subprocess.CalledProcessError(
+            returncode=result.exit_code,
+            cmd=["jj", "pr"] + list(args),
+            output=result.output,
+        )
+    return result.output.strip()
 
 
 @contextlib.contextmanager
