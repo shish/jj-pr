@@ -40,7 +40,7 @@ class Phabricator(Forge):
         draft: bool = False,
         message: Optional[str] = None,
     ) -> None:
-        changes = jj.specified_or_stack(ref, require_description=True)
+        changes = jj.change_id(ref) if ref else jj.pushable_stack()
         log.info(f"Pushing {ref} ({changes})")
         for change_id in changes:
             self._push_one(change_id, draft=draft, message=message)

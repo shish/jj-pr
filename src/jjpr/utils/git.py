@@ -3,17 +3,17 @@ import subprocess
 import httpx
 
 from .. import exc
-from .exec import run
+from . import exec
 
 
 def get_remote_url(remote_name: str = "origin") -> httpx.URL:
     try:
-        url = run(["git", "config", "--get", f"remote.{remote_name}.url"])
+        url = exec.run(["git", "config", "--get", f"remote.{remote_name}.url"])
         if "://" not in url:
             if url.startswith("/"):
                 url = "file://" + url
             else:
-                url = "https://" + url.replace(":", "/", 1)
+                url = "ssh://" + url.replace(":", "/", 1)
         return httpx.URL(url)
     except Exception as e:
         raise exc.UserError(f"Failed to get git remote URL for '{remote_name}': {e}")
@@ -22,7 +22,7 @@ def get_remote_url(remote_name: str = "origin") -> httpx.URL:
 def get_merge_target(remote: str = "origin") -> str:
     # Output format: ref: refs/heads/main	HEAD
     try:
-        output = run(["git", "ls-remote", "--symref", remote, "HEAD"])
+        output = exec.run(["git", "ls-remote", "--symref", remote, "HEAD"])
         if output.startswith("ref:"):
             # Extract the branch name from "ref: refs/heads/main	HEAD"
             ref_path = output.split()[1]  # "refs/heads/main"

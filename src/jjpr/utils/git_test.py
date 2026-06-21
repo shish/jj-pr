@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -20,6 +21,11 @@ class TestGetMergeTarget:
         with pytest.raises(exc.UserError):
             git.get_merge_target("nonexistent")
 
+    def test_unparsable_output(self, tmp_repo: Path):
+        with mock.patch("jjpr.utils.exec.run", return_value="invalid output"):
+            with pytest.raises(exc.UserError):
+                git.get_merge_target("origin")
+
 
 class TestGetGitRemoteUrl:
     def test_with_configured_remote(self, tmp_repo: Path):
@@ -29,6 +35,11 @@ class TestGetGitRemoteUrl:
     def test_nonexistent_remote(self, tmp_repo: Path):
         with pytest.raises(exc.UserError):
             git.get_remote_url("nonexistent")
+
+    def test_with_scp_style_remote(self, tmp_repo: Path):
+        run_cmd("git", "remote", "set-url", "origin", "git@github.com:user/repo.git")
+        url = git.get_remote_url("origin")
+        assert url == "ssh://git@github.com/user/repo.git"
 
     def test_default_remote(self, tmp_repo: Path):
         url = git.get_remote_url()

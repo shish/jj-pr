@@ -49,12 +49,3 @@ def get_forge(forge: Optional[ForgeName], remote: str) -> Forge:
         f"Could not detect forge from remote URL: {remote_url}. "
         "Please specify --forge explicitly (github, phabricator, gerrit)."
     )
-
-
-__all__ = [
-    "Forge",
-    "GitHub",
-    "Phabricator",
-    "Gerrit",
-    "get_forge",
-]

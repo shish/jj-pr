@@ -18,12 +18,11 @@ class GitHub(Forge):
         draft: bool = False,
         message: Optional[str] = None,
     ) -> None:
-        changes = jj.specified_or_stack(ref, require_description=True)
+        changes = jj.change_id(ref) if ref else jj.pushable_stack()
 
-        # if a change between the base and current change has
-        # a branch name that starts with "pr/":
+        # if a change in the stack has a branch name that starts with "pr/":
         branches = [jj.branches_pointing_to(change, prefix="pr/") for change in changes]
-        branches = [b[0] for b in branches if b]
+        branches = [list(b)[0] for b in branches if b]
         if branches:
             # - advance that branch to the current change
             # - force-push the branch to the remote

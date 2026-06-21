@@ -33,7 +33,7 @@ dev = [
 packages = ["src/jjpr"]
 
 [tool.coverage.run]
-omit = ["*_test.py"]
+omit = ["*_test.py", "conftest.py", "jj_cli.py"]
 
 [tool.pytest.ini_options]
 #testpaths = ["tests/"]

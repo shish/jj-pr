@@ -92,7 +92,7 @@ def push_command(
     r = cast(GlobalOptions, ctx.obj).repo
     with r.chdir():
         if pre_commit:
-            cmds.pre_commit(ref)
+            cmds.pre_commit_stack(ref)
         r.forge.push(ref, draft=draft, message=message)
 
 
@@ -169,7 +169,7 @@ def pre_commit_command(
     """Run pre-commit hooks."""
     r = cast(GlobalOptions, ctx.obj).repo
     with r.chdir():
-        cmds.pre_commit(ref)
+        cmds.pre_commit_stack(ref)
 
 
 def run() -> None:

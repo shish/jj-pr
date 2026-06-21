@@ -71,6 +71,24 @@ def tmp_cwd() -> Generator[Path, None, None]:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def _create_dotfiles() -> None:
+    # configure .gitrc
+    run_cmd("git", "config", "set", "--global", "user.email", "test@example.com")
+    run_cmd("git", "config", "set", "--global", "user.name", "Test User")
+
+    # configure jj
+    run_cmd("jj", "config", "set", "--user", "user.email", "test@example.com")
+    run_cmd("jj", "config", "set", "--user", "user.name", "Test User")
+    run_cmd(
+        "jj",
+        "config",
+        "set",
+        "--user",
+        "aliases.pr",
+        json.dumps(["util", "exec", "--", shutil.which("jj-pr")]),
+    )
+
+
 @pytest.fixture(scope="session")
 def tmp_home() -> Generator[Path, None, None]:
     """Create a temporary home directory for tests, with git & jj configured."""
@@ -81,21 +99,7 @@ def tmp_home() -> Generator[Path, None, None]:
             os.environ["GIT_TERMINAL_PROMPT"] = "0"  # Disable git credential prompts
             home_lock = Path(tmp_dir) / ".jjpr-lock"
             with FileLock(home_lock):
-                # configure .gitrc
-                run_cmd(
-                    "git", "config", "set", "--global", "user.email", "test@example.com"
-                )
-                run_cmd("git", "config", "set", "--global", "user.name", "Test User")
-
-                # configure jj
-                run_cmd(
-                    "jj",
-                    "config",
-                    "set",
-                    "--user",
-                    "aliases.pr",
-                    json.dumps(["util", "exec", "--", shutil.which("jj-pr")]),
-                )
+                _create_dotfiles()
 
             yield Path(tmp_dir)
         finally:

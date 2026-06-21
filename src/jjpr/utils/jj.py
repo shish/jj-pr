@@ -1,6 +1,8 @@
+import json
 import logging
 import shlex
 import subprocess
+import typing as t
 from contextlib import contextmanager
 from typing import Literal, overload
 
@@ -104,8 +106,10 @@ def change_ids(r: RevSet) -> list[ChangeID]:
 
 def change_id(revset: RevSet) -> ChangeID:
     cs = change_ids(revset)
+    if len(cs) == 0:
+        raise ValueError(f"Revset {revset!r} did not resolve to any change IDs")
     if len(cs) != 1:
-        raise ValueError(f"Revset {revset} did not resolve to a single change ID")
+        raise ValueError(f"Revset {revset!r} resolved to multiple change IDs: {cs}")
     return cs[0]
 
 
@@ -113,43 +117,52 @@ def closest_work() -> ChangeID:
     return change_id("heads(::@ & mutable() & (~empty() | merges()))")
 
 
-def specified_or_stack(
-    rev: RevSet | None,
-    require_description: bool = False,
-) -> list[ChangeID]:
-    if rev:
-        return [change_id(rev)]
-    else:
-        return current_stack(require_description=require_description)
+def pushable_stack() -> list[ChangeID]:
+    # Find commits in the current stack (mutable commits from the trunk
+    # up to and including the current commit), with a commit message
+    # and file changes (ie commits which can be pushed for review)
+    return change_ids(
+        'trunk()..heads(::@ & mutable() & ~description(exact:"") & (~empty() | merges()))'
+    )
 
 
-def current_stack(require_description: bool = False) -> list[ChangeID]:
-    if require_description:
-        stack = 'trunk()..heads(::@ & mutable() & ~description(exact:"") & (~empty() | merges()))'
-    else:
-        stack = "trunk()..heads(::@ & mutable() & (~empty() | merges()))"
-    return change_ids(stack)
+def checkable_stack() -> list[ChangeID]:
+    # Find commits in the current stack (mutable commits from the trunk
+    # up to and including the current commit), with file changes that
+    # that can be checked by pre-commit hooks or similar
+    return change_ids("trunk()..heads(::@ & mutable() & (~empty() | merges()))")
 
 
 def change_info(change_id: ChangeID, t: str) -> str:
     return run("log", "-r", change_id, "--no-graph", "-T", t)
 
 
-def parents_of(change_id: ChangeID) -> list[ChangeID]:
+def bookmarks() -> dict[str, dict[str, t.Any]]:
+    output = run("bookmark", "list", "-T", 'json(self) ++ "\\n"')
+    bs = {}
+    for js in [json.loads(b) for b in output.split("\n") if b]:
+        name = js["name"]
+        if "remote" in js:
+            name = f"{name}@{js['remote']}"
+        bs[name] = js
+    return bs
+
+
+def parents_of(change_id: ChangeID) -> set[ChangeID]:
     output = change_info(
         change_id, 'parents.map(|p| p.change_id().short()).join("\\n")'
     )
-    return [p for p in output.split("\n") if p]
+    return {p for p in output.split("\n") if p}
 
 
-def files_in(change_id: ChangeID) -> list[str]:
+def files_in(change_id: ChangeID) -> set[str]:
     output = change_info(change_id, 'self.diff().files().map(|f| f.path()).join("\\n")')
-    return [f for f in output.split("\n") if f]
+    return {f for f in output.split("\n") if f}
 
 
-def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> list[str]:
+def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> set[str]:
     output = change_info(change_id, 'self.bookmarks().map(|b| b.name()).join("\\n")')
-    return [b for b in output.split("\n") if b and b.startswith(prefix)]
+    return {b for b in output.split("\n") if b and b.startswith(prefix)}
 
 
 def description_of(change_id: ChangeID) -> str:
@@ -173,7 +186,9 @@ def with_edit(rev: RevSet, new: bool = False):
         yield
         return
 
-    is_empty = files_in(orig_change_id) == []
+    no_files = len(files_in(orig_change_id)) == 0
+    no_descr = description_of(orig_change_id) == ""
+    is_empty = no_files and no_descr
     try:
         co = "child of " if new else ""
         log.debug(f"Switching from {orig_change_id} to {co}{targ_change_id}.")

@@ -4,7 +4,6 @@ import shlex
 import shutil
 from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -19,7 +18,10 @@ log = logging.getLogger(__name__)
 
 class Repo:
     def __init__(
-        self, path: Path, remote: Optional[str], forge_type: Optional[detect.ForgeName]
+        self,
+        path: Path,
+        remote: str | None,
+        forge_type: detect.ForgeName | None,
     ):
         # spec = /path/to/repo:remote:forge where remote and forge are optional
         # eg ~/Projects/jjpp:origin
@@ -40,7 +42,7 @@ class Repo:
             os.chdir(original_dir)
 
 
-def _get_pc_command() -> Optional[str]:
+def _get_pc_command() -> str | None:
     pc_configured = Path(".git/hooks/pre-commit").exists()
     if not pc_configured:
         return None
@@ -55,7 +57,7 @@ def _get_pc_command() -> Optional[str]:
     return pc_cmd
 
 
-def _get_arc_command() -> Optional[str]:
+def _get_arc_command() -> str | None:
     arc_configured = Path(".arclint").exists()
     if not arc_configured:
         return None
@@ -67,7 +69,7 @@ def _get_arc_command() -> Optional[str]:
     return arc_bin
 
 
-def pre_commit(ref: Optional[str]) -> None:
+def pre_commit_stack(ref: str | None) -> None:
     """Run pre-commit hooks on a stack of changes."""
     pc_cmd = _get_pc_command()
     arc_cmd = _get_arc_command()
@@ -75,29 +77,30 @@ def pre_commit(ref: Optional[str]) -> None:
         log.info("No pre-commit configuration found, skipping")
         return
 
-    changes = jj.specified_or_stack(ref, require_description=False)
+    changes = jj.change_ids(ref) if ref else jj.pushable_stack()
     for n, change_id in enumerate(changes):
         if n > 0:
             print("=" * 80)
-        with jj.with_edit(change_id):
-            files = jj.files_in(change_id)
-            files = [f for f in files if Path(f).exists()]
-            descr = (jj.description_of(change_id).splitlines() or ["(untitled)"])[0]
-            print(f'Checking "{descr}" ({change_id})')
-            print(f"Affected files: {shlex.join(files)}")
+            pre_commit_change(change_id, pc_cmd, arc_cmd)
+
+
+def pre_commit_change(change_id: str, pc_cmd: str | None, arc_cmd: str | None) -> None:
+    with jj.with_edit(change_id):
+        files = jj.files_in(change_id)
+        files = [f for f in files if Path(f).exists()]
+        descr = (jj.description_of(change_id).splitlines() or ["(untitled)"])[0]
+        print(f'Checking "{descr}" ({change_id})')
+        print(f"Affected files: {shlex.join(files)}")
+        try:
             if pc_cmd:
-                try:
-                    exec.run([pc_cmd, "run", "--files", *files], cap=False)
-                except Exception:
-                    raise exc.UserError(f"{pc_cmd} failed for change {change_id}")
+                exec.run([pc_cmd, "run", "--files", *files], cap=False)
             if arc_cmd:
-                try:
-                    exec.run([arc_cmd, "lint", "--apply-patches"], cap=False)
-                except Exception:
-                    raise exc.UserError(f"{arc_cmd} failed for change {change_id}")
+                exec.run([arc_cmd, "lint", "--apply-patches"], cap=False)
+        except Exception:
+            raise exc.UserError(f"pre-commit checks failed for change {change_id}")
 
 
-def display_list(items: List[CRListItem], multi: bool) -> None:
+def display_list(items: list[CRListItem], multi: bool) -> None:
     """Display a list of code review items in a formatted table."""
     console = Console()
 
