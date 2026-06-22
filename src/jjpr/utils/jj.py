@@ -50,6 +50,13 @@ def bookmark_create(name: str, r: RevSet) -> None:
     run("bookmark", "create", name, "-r", r, cap=False)
 
 
+def config_get(key: str) -> str | None:
+    try:
+        return run("config", "get", key, cap=True)
+    except JjError:
+        return None
+
+
 def describe(r: ChangeID, m: str) -> None:
     run("describe", "-r", r, "-m", m)
 

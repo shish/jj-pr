@@ -5,6 +5,8 @@ from typing import List, Optional
 
 import httpx
 
+from ..utils import git
+
 log = logging.getLogger(__name__)
 
 
@@ -36,47 +38,9 @@ class ForgeException(Exception):
 
 
 class Forge(ABC):
-    def __init__(self, remote: str, remote_url: httpx.URL):
+    def __init__(self, remote: str) -> None:
         self.remote = remote
-        self.remote_url = remote_url
-
-    @property
-    def forge_url(self) -> httpx.URL:
-        """Extract the forge API base URL from remote_url.
-
-        Converts URLs like:
-        - https://gerrit.mycompany.com/a/project -> https://gerrit.mycompany.com
-        - https://github.com/owner/repo.git -> https://github.com
-        - ssh://git@phabricator.foo.com/bar/repo.git -> https://phabricator.foo.com
-        """
-        scheme = self.remote_url.scheme
-        if scheme not in ("http", "https"):
-            scheme = "https"
-        return httpx.URL(
-            scheme=scheme, host=self.remote_url.host, port=self.remote_url.port
-        )
-
-    @property
-    def project_id(self) -> str:
-        """Extract the project path from remote_url.
-
-        Converts URLs like:
-        - https://gerrit.mycompany.com/a/project -> project
-        - https://github.com/owner/repo.git -> owner/repo
-        """
-        # Handle HTTPS URLs
-        path = self.remote_url.path
-
-        # Remove leading/trailing slashes and .git suffix
-        path = path.strip("/")
-        if path.endswith(".git"):
-            path = path[:-4]
-
-        # Remove Gerrit API prefix /a/ if present
-        if path.startswith("a/"):
-            path = path[2:]
-
-        return path
+        self.remote_url = git.get_remote_url(remote)
 
     @abstractmethod
     def push(

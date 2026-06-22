@@ -12,8 +12,17 @@ log = logging.getLogger(__name__)
 
 
 class Gerrit(Forge):
-    def __init__(self, remote: str, remote_url: httpx.URL):
-        super().__init__(remote, remote_url)
+    def __init__(self, remote: str):
+        super().__init__(remote)
+        if conf := jj.config_get("gerrit.review-url"):
+            self.forge_url = httpx.URL(conf)
+        else:
+            s = self.remote_url.scheme
+            self.forge_url = self.remote_url.copy_with(
+                scheme=s if s == "http" else "https", path="/"
+            )
+        if match := re.match(r"^/(a/)?(.*?)(\.git)?$", self.remote_url.path):
+            self.project_id = match.group(2)
         self.client = GerritClient(self.forge_url)
 
     def push(

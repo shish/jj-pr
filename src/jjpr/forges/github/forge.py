@@ -12,6 +12,21 @@ log = logging.getLogger(__name__)
 
 
 class GitHub(Forge):
+    def __init__(self, remote: str):
+        super().__init__(remote)
+
+        s = self.remote_url.scheme
+        self.forge_url = self.remote_url.copy_with(
+            scheme=s if s == "http" else "https", path="/"
+        )
+
+        if match := re.match("/([^/]+?/[^/]+?)(\\.git)?", self.remote_url.path):
+            self.project_id = match.group(1)
+        else:
+            raise ValueError(
+                f"Invalid GitHub remote URL format: {self.remote_url}. Expected format: owner/repo"
+            )
+
     def push(
         self,
         ref: Optional[str],

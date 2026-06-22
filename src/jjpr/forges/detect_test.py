@@ -49,7 +49,7 @@ class TestDetectForgeFromUrl:
 
 class TestGetForge:
     def test_get_forge_explicit(self, tmp_repo: Path):
-        run_cmd("git", "remote", "add", "secret", "https://secret.com/blag.git")
+        run_cmd("git", "remote", "add", "secret", "https://secret.com/user/blag.git")
         forge = detect.get_forge("github", "secret")
         assert forge is not None
         assert forge.__class__.__name__ == "GitHub"

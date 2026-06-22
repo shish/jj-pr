@@ -39,11 +39,11 @@ def get_forge(forge: Optional[ForgeName], remote: str) -> Forge:
     if not forge:
         forge = detect_forge_from_url(remote_url)
     if forge == "github":
-        return GitHub(remote, remote_url)
+        return GitHub(remote)
     elif forge == "phabricator":
-        return Phabricator(remote, remote_url)
+        return Phabricator(remote)
     elif forge == "gerrit":
-        return Gerrit(remote, remote_url)
+        return Gerrit(remote)
 
     raise exc.UserError(
         f"Could not detect forge from remote URL: {remote_url}. "

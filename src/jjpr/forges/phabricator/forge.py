@@ -18,21 +18,15 @@ PhID = str
 
 
 class Phabricator(Forge):
-    def __init__(self, remote: str, remote_url: httpx.URL):
-        super().__init__(remote, remote_url)
-        self.client = PhabricatorClient(self.forge_url)
-
-    @property
-    def project_id(self) -> str:
-        arcconfig_path = Path(".arcconfig")
-        if arcconfig_path.exists():
-            with open(arcconfig_path) as f:
-                arcconfig = json.load(f)
-            if callsign := arcconfig.get("repository.callsign"):
-                return callsign
-        raise exc.UserError(
-            "Could not determine project ID. Ensure .arcconfig exists and has 'repository.callsign' set."
-        )
+    def __init__(self, remote: str):
+        super().__init__(remote)
+        try:
+            self.repo_config = json.loads(Path(".arcconfig").read_text())
+            self.forge_url = httpx.URL(self.repo_config["phabricator.uri"])
+            self.project_id = self.repo_config["repository.callsign"]
+            self.client = PhabricatorClient(self.forge_url)
+        except Exception as e:
+            raise exc.UserError(f"Error loading repo config from .arcconfig: {e}")
 
     def push(
         self,
