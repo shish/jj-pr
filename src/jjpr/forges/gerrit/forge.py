@@ -23,6 +23,11 @@ class Gerrit(Forge):
             )
         if match := re.match(r"^/(a/)?(.*?)(\.git)?$", self.remote_url.path):
             self.project_id = match.group(2)
+        if conf := jj.config_get("gerrit.default-remote-branch"):
+            self.merge_target = conf
+        else:
+            self.merge_target = git.get_merge_target()
+
         self.client = GerritClient(self.forge_url)
 
     def push(
@@ -41,7 +46,7 @@ class Gerrit(Forge):
             r=range,
             wip=draft,
             message=message,
-            remote_branch=git.get_merge_target(),
+            remote_branch=self.merge_target,
         )
 
     def checkout(self, identifier: str) -> None:
