@@ -26,7 +26,7 @@ def url() -> httpx.URL:
 def session(
     tmp_home: Path,
     url: httpx.URL,
-) -> Generator[httpx.Client, None, None]:
+) -> Generator[PhabricatorClient, None, None]:
     # configure .arcrc
     phabricator_token = os.getenv("JJPR_TEST_PHABRICATOR_API_TOKEN")
     if not phabricator_token:
@@ -49,40 +49,34 @@ def session(
     client = PhabricatorClient(url)
 
     # check that the client works
+    if not shutil.which("arc"):
+        pytest.skip("`arc` command not found, skipping tests")
     try:
-        if not shutil.which("arc"):
-            pytest.skip("`arc` command not found, skipping tests")
-        try:
-            data = client.post("user.whoami").json()["result"]
-            assert data["userName"] == "admin"
-        except Exception as e:
-            pytest.skip(f"Phabricator server seems broken, skipping tests: {e}")
-        yield client
-    finally:
-        client.close()
+        data = client.call("user.whoami")
+        assert data["userName"] == "admin"
+    except Exception as e:
+        pytest.skip(f"Phabricator server seems broken, skipping tests: {e}")
+    yield client
 
 
 @pytest.fixture
 def repo(
     url: httpx.URL,
-    session: httpx.Client,
+    session: PhabricatorClient,
 ) -> Generator[httpx.URL, None, None]:
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
     repo_name = f"ztst-phab-{rand}"
     try:
-        response = session.post(
+        session.call(
             "diffusion.repository.edit",
-            data={
-                "transactions": [
-                    {"type": "name", "value": repo_name},
-                    {"type": "vcs", "value": "git"},
-                    {"type": "callsign", "value": f"ZTST{rand.upper()}"},
-                    {"type": "status", "value": "active"},
-                    {"type": "shortName", "value": repo_name},
-                ]
-            },
+            transactions=[
+                {"type": "name", "value": repo_name},
+                {"type": "vcs", "value": "git"},
+                {"type": "callsign", "value": f"ZTST{rand.upper()}"},
+                {"type": "status", "value": "active"},
+                {"type": "shortName", "value": repo_name},
+            ],
         )
-        response.json()
     except Exception as e:
         pytest.skip(f"Phabricator repo creation error: {url}: {e}")
 
@@ -111,21 +105,15 @@ def repo(
 
         yield repo_url
     finally:
-        response = session.post(
+        response = session.call(
             "diffusion.repository.search",
-            data={"constraints": {"shortNames": [repo_name]}},
+            constraints={"shortNames": [repo_name]},
         )
-        result = response.json()
-        repos = result.get("result", {}).get("data", [])
-        if repos:
-            repo_phid = repos[0]["phid"]
-            session.post(
-                "diffusion.repository.edit",
-                data={
-                    "objectIdentifier": repo_phid,
-                    "transactions": [{"type": "status", "value": "inactive"}],
-                },
-            )
+        session.call(
+            "diffusion.repository.edit",
+            objectIdentifier=response["data"][0]["phid"],
+            transactions=[{"type": "status", "value": "inactive"}],
+        )
 
 
 @pytest.fixture
