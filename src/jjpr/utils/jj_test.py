@@ -38,6 +38,16 @@ class TestBasicCommands:
         bookmarks_after_advance = jj.bookmarks()
         assert bookmark_name in bookmarks_after_advance
 
+    def test_config_get(self, repo_with_commits: Path):
+        # Set a config value
+        jj.run("config", "set", "test.key", "test_value")
+        value = jj.config_get("test.key")
+        assert value == "test_value"
+
+        # Test getting a non-existent config key
+        non_existent_value = jj.config_get("non.existent.key")
+        assert non_existent_value is None
+
     def test_describe(self, repo_with_commits: Path):
         change_id = jj.change_id("@")
         new_description = "Updated description"

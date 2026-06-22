@@ -16,6 +16,13 @@ class Gerrit(Forge):
         super().__init__(remote, remote_url)
         self.client = GerritClient(self.forge_url)
 
+    @property
+    def forge_url(self) -> httpx.URL:
+        conf = jj.config_get("gerrit.review-url")
+        if conf:
+            return httpx.URL(conf)
+        return super().forge_url
+
     def push(
         self,
         ref: Optional[str],
