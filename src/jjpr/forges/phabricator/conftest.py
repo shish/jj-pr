@@ -88,7 +88,7 @@ def repo(
         # those as part of the repo creation process.
         with tmp_cwd():
             for attempt in tc.Retrying(
-                stop=tc.stop_after_attempt(30),
+                stop=tc.stop_after_attempt(60),
                 wait=tc.wait_fixed(2),
                 reraise=True,
             ):
