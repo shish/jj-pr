@@ -4,7 +4,8 @@ import re
 import httpx
 
 from ...utils import exec, git, jj
-from ..base import CRListItem, Forge
+from .. import cr
+from ..base import Forge
 from .client import GerritClient
 
 log = logging.getLogger(__name__)
@@ -16,16 +17,17 @@ class Gerrit(Forge):
         if conf := jj.config_get("gerrit.review-url"):
             self.forge_url = httpx.URL(conf)
         else:
-            s = self.remote_url.scheme
-            self.forge_url = self.remote_url.copy_with(
-                scheme=s if s == "http" else "https", path="/"
-            )
+            if self.remote_url.scheme in {"http", "https"}:
+                self.forge_url = self.remote_url.copy_with(path=None)
+            else:
+                self.forge_url = self.remote_url.copy_with(
+                    scheme="https", username=None, port=None, path=None
+                )
         if match := re.match(r"^/(a/)?(.*?)(\.git)?$", self.remote_url.path):
             self.project_id = match.group(2)
-        if conf := jj.config_get("gerrit.default-remote-branch"):
-            self.merge_target = conf
-        else:
-            self.merge_target = git.get_merge_target()
+        self.merge_target = (
+            jj.config_get("gerrit.default-remote-branch") or git.get_merge_target()
+        )
 
         self.client = GerritClient(self.forge_url)
 
@@ -71,7 +73,7 @@ class Gerrit(Forge):
         exec.run(["git", "fetch", self.remote, f"{current_rev}:{remote_id}"])
         exec.run(["git", "checkout", remote_id])
 
-    def list_crs(self, all_projects: bool = False) -> list[CRListItem]:
+    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
         """List the user's open changes in Gerrit, showing any blockers."""
         log.info(
             f"Listing open changes from {self.forge_url} ({'*' if all_projects else self.project_id})"
@@ -83,28 +85,28 @@ class Gerrit(Forge):
             f"changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=DETAILED_ACCOUNTS"
         ).json()
 
-        crs: list[CRListItem] = []
+        crs: list[cr.CodeReview] = []
         for change in changes_response:
             blockers = []
             for req in change.get("submit_requirements", []):
                 if req["status"] not in {"SATISFIED", "NOT_APPLICABLE"}:
                     req_name = re.sub("[^A-Z]+", "", req["name"])
-                    blockers.append(req_name)
+                    blockers.append(cr.Blocker(req_name))
 
             crs.append(
-                CRListItem(
-                    forge_name="Gerrit",
-                    forge_url=self.forge_url,
-                    project_id=self.project_id,
-                    identifier=str(change["_number"]),
-                    title=change["subject"],
-                    url=self.forge_url.join(f"/c/{change['_number']}"),
+                cr.CodeReview(
+                    forge=self,
+                    cr_id=str(change["_number"]),
+                    title=cr.Title(
+                        change["subject"],
+                        url=self.forge_url.join(f"/c/{change['_number']}"),
+                    ),
                     state=_colour_state(
                         is_private=change.get("is_private", False),
                         work_in_progress=change.get("work_in_progress", False),
                         blockers=len(blockers) > 0,
                     ),
-                    blockers=", ".join(blockers),
+                    blockers=blockers,
                 )
             )
 
@@ -115,7 +117,7 @@ def _colour_state(
     is_private: bool = False,
     work_in_progress: bool = False,
     blockers: bool = False,
-) -> str:
+) -> cr.State:
     if is_private:
         state = "Private"
         color = "cyan"
@@ -129,4 +131,4 @@ def _colour_state(
         state = "Accepted"
         color = "green"
 
-    return f"[{color}]{state}[/{color}]"
+    return cr.State(state, color=color)

@@ -6,7 +6,8 @@ import typing as t
 import httpx
 
 from ...utils import exec, git, jj
-from ..base import CRListItem, Forge
+from .. import cr
+from ..base import Forge
 
 log = logging.getLogger(__name__)
 
@@ -15,12 +16,14 @@ class GitHub(Forge):
     def __init__(self, remote: str):
         super().__init__(remote)
 
-        s = self.remote_url.scheme
-        self.forge_url = self.remote_url.copy_with(
-            scheme=s if s == "http" else "https", path="/"
-        )
+        if self.remote_url.scheme in {"http", "https"}:
+            self.forge_url = self.remote_url.copy_with(path=None)
+        else:
+            self.forge_url = self.remote_url.copy_with(
+                scheme="https", username=None, port=None, path=None
+            )
 
-        if match := re.match("/([^/]+?/[^/]+?)(\\.git)?", self.remote_url.path):
+        if match := re.match("^/([^/]+?/[^/]+?)(\\.git)?$", self.remote_url.path):
             self.project_id = match.group(1)
         else:
             raise ValueError(
@@ -93,7 +96,7 @@ class GitHub(Forge):
             ]
         )
 
-    def list_crs(self, all_projects: bool = False) -> list[CRListItem]:
+    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
         if all_projects:
             log.warning("Listing PRs for all projects is not supported for GitHub.")
         log.info(
@@ -109,7 +112,7 @@ class GitHub(Forge):
             "number,title,state,url,statusCheckRollup,isDraft,reviews",
         ]
         prs = json.loads(exec.run(cmd))
-        crs: list[CRListItem] = []
+        crs: list[cr.CodeReview] = []
         c2c = {
             "SUCCESS": "green",
             "PENDING": "yellow",
@@ -118,24 +121,25 @@ class GitHub(Forge):
         for pr in prs:
             # Merge status checks into a blockers string
             checks = pr.get("statusCheckRollup", [])
-            blockers = ", ".join(
-                f"[{c2c.get(check['conclusion'], 'normal')}][link={check['detailsUrl']}]{check['name']}[/link][/]"
+            blockers = [
+                cr.Blocker(
+                    name=check["name"],
+                    color=c2c.get(check["conclusion"], "normal"),
+                    url=check["detailsUrl"],
+                )
                 for check in checks
                 if check.get("conclusion") != "SUCCESS"
-            )
+            ]
 
             # Determine PR state based on draft status and reviews
             is_draft = pr.get("isDraft", False)
             reviews = pr.get("reviews", [])
 
             crs.append(
-                CRListItem(
-                    forge_name="GitHub",
-                    forge_url=self.forge_url,
-                    project_id=self.project_id,
-                    identifier=str(pr["number"]),
-                    title=pr["title"],
-                    url=httpx.URL(pr["url"]),
+                cr.CodeReview(
+                    forge=self,
+                    cr_id=str(pr["number"]),
+                    title=cr.Title(pr["title"], url=httpx.URL(pr["url"])),
                     state=_colour_state(is_draft=is_draft, reviews=reviews),
                     blockers=blockers,
                 )
@@ -143,7 +147,9 @@ class GitHub(Forge):
         return crs
 
 
-def _colour_state(is_draft: bool = False, reviews: list[t.Any] | None = None) -> str:
+def _colour_state(
+    is_draft: bool = False, reviews: list[t.Any] | None = None
+) -> cr.State:
     if reviews is None:
         reviews = []
 
@@ -166,4 +172,4 @@ def _colour_state(is_draft: bool = False, reviews: list[t.Any] | None = None) ->
             display_state = "Needs Review"
             color = "yellow"
 
-    return f"[{color}]{display_state}[/{color}]"
+    return cr.State(display_state, color=color)
