@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from . import cmds
-from .conftest import tmp_cwd
+from .conftest import run_cmd, tmp_cwd
 from .forges import cr
 from .forges.base import Forge
 
@@ -62,7 +62,8 @@ def make_cr_list_item(
 
 class TestRepo:
     def test_init(self, tmp_repo: Path):
-        r = cmds.Repo(tmp_repo, "origin", "github")
+        run_cmd("git", "remote", "set-url", "origin", "https://github.com/foo/bar")
+        r = cmds.Repo(tmp_repo, None)
         assert r.path == tmp_repo
         with tmp_cwd() as _:
             assert os.getcwd() != str(tmp_repo)

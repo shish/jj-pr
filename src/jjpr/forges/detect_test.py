@@ -1,7 +1,7 @@
+import json
 import logging
 from pathlib import Path
 
-import httpx
 import pytest
 
 from .. import exc
@@ -11,63 +11,85 @@ from . import detect
 log = logging.getLogger(__name__)
 
 
-class TestDetectForgeFromUrl:
-    def test_detect_github(self):
-        result = detect.detect_forge_from_url(
-            httpx.URL("https://github.com/user/repo.git")
-        )
-        assert result == "github"
+class TestGetForgeFromConfig:
+    def test_detect_github(self, tmp_repo: Path):
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "github")
+        assert detect._get_forge_from_config() == "github"
 
-    def test_detect_github_with_www(self):
-        result = detect.detect_forge_from_url(
-            httpx.URL("https://www.github.com/user/repo.git")
-        )
-        assert result == "github"
+    def test_detect_phabricator(self, tmp_repo: Path):
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "phabricator")
+        assert detect._get_forge_from_config() == "phabricator"
+
+    def test_detect_gerrit(self, tmp_repo: Path):
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "gerrit")
+        assert detect._get_forge_from_config() == "gerrit"
+
+    def test_detect_no_config(self, tmp_repo: Path):
+        assert detect._get_forge_from_config() is None
+
+
+class TestGetForgeFromRemoteName:
+    def test_detect_github(self):
+        assert detect._get_forge_from_remote_name("github") == "github"
 
     def test_detect_phabricator(self):
-        result = detect.detect_forge_from_url(
-            httpx.URL("https://phabricator.example.com/repo/name")
-        )
-        assert result == "phabricator"
+        assert detect._get_forge_from_remote_name("phabricator") == "phabricator"
 
     def test_detect_gerrit(self):
-        result = detect.detect_forge_from_url(
-            httpx.URL("https://gerrit.example.com/repo")
-        )
-        assert result == "gerrit"
+        assert detect._get_forge_from_remote_name("gerrit") == "gerrit"
 
-    def test_detect_unknown_forge(self):
-        result = detect.detect_forge_from_url(
-            httpx.URL("https://unknown.example.com/repo")
-        )
-        assert result is None
+    def test_detect_unknown_remote(self):
+        assert detect._get_forge_from_remote_name("unknown") is None
 
-    def test_detect_forge_case_insensitive(self):
-        result = detect.detect_forge_from_url(httpx.URL("https://GITHUB.COM/user/repo"))
-        assert result == "github"
+
+class TestGetForgeFromRemoteUrl:
+    def test_detect_github(self, tmp_repo: Path):
+        run_cmd("git", "remote", "set-url", "origin", "https://github.com/foo/bar")
+        assert detect._get_forge_from_remote_url("origin") == "github"
+
+    def test_detect_phabricator(self, tmp_repo: Path):
+        run_cmd("git", "remote", "set-url", "origin", "https://phab.foo.com/foo/bar")
+        assert detect._get_forge_from_remote_url("origin") == "phabricator"
+
+    def test_detect_gerrit(self, tmp_repo: Path):
+        run_cmd("git", "remote", "set-url", "origin", "https://gerrit.foo.com/foo/bar")
+        assert detect._get_forge_from_remote_url("origin") == "gerrit"
+
+    def test_detect_unknown_forge(self, tmp_repo: Path):
+        run_cmd("git", "remote", "set-url", "origin", "https://unknown.com/foo/bar")
+        assert detect._get_forge_from_remote_url("origin") is None
 
 
 class TestGetForge:
-    def test_get_forge_explicit(self, tmp_repo: Path):
-        run_cmd("git", "remote", "add", "secret", "https://secret.com/user/blag.git")
-        forge = detect.get_forge("github", "secret")
-        assert forge is not None
-        assert forge.__class__.__name__ == "GitHub"
+    def test_detect_github(self, tmp_repo: Path):
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "github")
+        f = detect.get_forge("origin")
+        assert f is not None
+        assert f.__class__.__name__ == "GitHub"
 
-    def test_get_forge_auto_detect_github(self, tmp_repo: Path):
-        run_cmd("git", "remote", "add", "gh", "https://github.com/user/repo.git")
-        forge = detect.get_forge(None, "gh")
-        assert forge is not None
-        assert forge.__class__.__name__ == "GitHub"
-
-    def test_get_forge_nonexistent_remote(self, tmp_repo: Path):
-        with pytest.raises(exc.UserError):
-            detect.get_forge(None, "nonexistent")
-
-    def test_get_forge_no_auto_detect_no_forge_specified(self, tmp_repo: Path):
-        """Test that unknown URL without explicit forge returns None."""
-        run_cmd(
-            "git", "remote", "add", "unrecognised", "https://unknown.example.com/repo"
+    def test_detect_phabricator(self, tmp_repo: Path):
+        rc = Path.home() / ".arcrc"
+        rc.write_text(
+            json.dumps({"hosts": {"https://phab.foo.com": {"token": "test_token"}}})
         )
+        arcconfig = {"repository.callsign": "TEST", "arc.land.onto.default": "main"}
+        (tmp_repo / ".arcconfig").write_text(json.dumps(arcconfig))
+        run_cmd("git", "remote", "set-url", "origin", "https://phab.foo.com/foo/bar")
+        f = detect.get_forge("origin")
+        assert f is not None
+        assert f.__class__.__name__ == "Phabricator"
+
+    def test_detect_gerrit(self, tmp_repo: Path):
+        rc = Path.home() / ".netrc"
+        rc.write_text("machine gerrit.foo.com\nlogin l\npassword p\n")
+        rc.chmod(0o600)
+        run_cmd("jj", "config", "set", "--repo", "gerrit.default-remote-branch", "main")
+        run_cmd("git", "remote", "set-url", "origin", "https://gerrit.foo.com/foo/bar")
+        f = detect.get_forge("origin")
+        assert f is not None
+        assert f.__class__.__name__ == "Gerrit"
+
+    def test_detect_unknown_forge(self, tmp_repo: Path):
+        run_cmd("git", "remote", "set-url", "origin", "https://unknown.com/foo/bar")
         with pytest.raises(exc.UserError):
-            detect.get_forge(None, "unrecognised")
+            detect.get_forge("origin")

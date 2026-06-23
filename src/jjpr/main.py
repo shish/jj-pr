@@ -7,7 +7,6 @@ from pathlib import Path
 import typer
 
 from . import cmds, exc
-from .forges import detect
 from .utils import jj
 
 app = typer.Typer(
@@ -36,9 +35,6 @@ def main(
     remote: str | None = typer.Option(
         None, "--remote", help="Which remote to work with"
     ),
-    forge: detect.ForgeName | None = typer.Option(
-        None, "--forge", help="Which forge backend to use"
-    ),
     verbose: int = typer.Option(
         0,
         "--verbose",
@@ -64,7 +60,7 @@ def main(
         except Exception as e:
             raise exc.UserError(f"Can't detect current repository: {e}")
 
-    ctx.obj = GlobalOptions(cmds.Repo(path, remote, forge), format)
+    ctx.obj = GlobalOptions(cmds.Repo(path, remote), format)
 
 
 @app.command("push")
@@ -132,26 +128,23 @@ def list_command(
         "--all-projects",
         help="List reviews for all projects on the forge",
     ),
-    extra_repos: list[str] = typer.Option(
+    extra_repos: list[Path] = typer.Option(
         [], "--extra-repo", help="List reviews for this other repo at the same time"
     ),
 ) -> None:
     """List my open PRs/CRs/Diffs for the current project."""
     gos = t.cast(GlobalOptions, ctx.obj)
     rs = [gos.repo]
+    for path in extra_repos:
+        rs.append(cmds.Repo(Path(path), None))
 
-    for extra in extra_repos:
-        path, remote, forge = (extra.split(":") + [None, None, None])[:3]
-        assert path is not None
-        if forge is not None:
-            assert forge in t.get_args(detect.ForgeName)
-            forge = t.cast(detect.ForgeName, forge)
-        rs.append(cmds.Repo(Path(path), remote, forge))
-
+    # Get all the reviews from all the forges
     items = []
     for r in rs:
         with r.chdir():
             items.extend(r.forge.list_crs(all_projects))
+
+    # Output the results
     if gos.format == "json":
         print(json.dumps([item.as_dict() for item in items], indent=4))
     else:
@@ -176,6 +169,7 @@ def pre_commit_command(
 def log_command(
     ctx: typer.Context,
 ) -> None:
+    """Run `jj log` with annotated extra output for code review status."""
     r = t.cast(GlobalOptions, ctx.obj).repo
     with r.chdir():
         print(r.forge.log(ctx.args))

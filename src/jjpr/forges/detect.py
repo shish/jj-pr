@@ -1,10 +1,7 @@
 import logging
-import typing as t
-
-import httpx
 
 from .. import exc
-from ..utils import git
+from ..utils import git, jj
 from .base import Forge
 from .gerrit.forge import Gerrit
 from .github.forge import GitHub
@@ -12,40 +9,44 @@ from .phabricator.forge import Phabricator
 
 log = logging.getLogger(__name__)
 
-ForgeName = t.Literal["github", "phabricator", "gerrit"]
+
+def _get_forge_from_config() -> str | None:
+    return jj.config_get("pr.forge")
 
 
-def detect_forge_from_url(url: httpx.URL) -> ForgeName | None:
+def _get_forge_from_remote_name(remote: str) -> str | None:
+    if remote in {"github", "phabricator", "gerrit"}:
+        return remote
+    return None
+
+
+def _get_forge_from_remote_url(remote: str) -> str | None:
+    url = git.get_remote_url(remote)
     domain = url.host.lower() if url.host else ""
-
-    # Remove 'www.' prefix if present
-    if domain.startswith("www."):
-        domain = domain[4:]
-
     if "github.com" in domain:
         return "github"
     elif "phab" in domain:
         return "phabricator"
     elif "gerrit" in domain:
         return "gerrit"
-
     return None
 
 
-def get_forge(forge: ForgeName | None, remote: str) -> Forge:
-    remote_url = git.get_remote_url(remote)
+def get_forge(remote: str) -> Forge:
+    forge = (
+        _get_forge_from_config()
+        or _get_forge_from_remote_name(remote)
+        or _get_forge_from_remote_url(remote)
+    )
 
-    # If forge is explicitly specified, use that
-    if not forge:
-        forge = detect_forge_from_url(remote_url)
     if forge == "github":
         return GitHub(remote)
     elif forge == "phabricator":
         return Phabricator(remote)
     elif forge == "gerrit":
         return Gerrit(remote)
-
-    raise exc.UserError(
-        f"Could not detect forge from remote URL: {remote_url}. "
-        "Please specify --forge explicitly (github, phabricator, gerrit)."
-    )
+    else:
+        raise exc.UserError(
+            "Could not detect forge from remote URL. "
+            "Please use `jj config set --repo pr.forge {github,phabricator,gerrit}`."
+        )

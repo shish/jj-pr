@@ -23,7 +23,7 @@ class Phabricator(Forge):
         super().__init__(remote)
         try:
             self.repo_config = json.loads(Path(".arcconfig").read_text())
-            uri = self.repo_config["phabricator.uri"]
+            uri = self.repo_config.get("phabricator.uri")
             self.forge_url = (
                 httpx.URL(uri) if uri else self.remote_url.copy_with(path=None)
             )

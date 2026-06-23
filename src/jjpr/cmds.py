@@ -20,14 +20,11 @@ class Repo:
         self,
         path: Path,
         remote: str | None,
-        forge_type: detect.ForgeName | None,
     ):
-        # spec = /path/to/repo:remote:forge where remote and forge are optional
-        # eg ~/Projects/jjpp:origin
         self.path = path.resolve()
         with self.chdir():
             default_remote = exec.run(["git", "remote"]).splitlines()[0]
-            forge = detect.get_forge(forge_type, remote or default_remote)
+            forge = detect.get_forge(remote or default_remote)
         self.forge = forge
 
     @contextmanager
