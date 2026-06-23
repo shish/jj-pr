@@ -9,8 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from . import exc
-from .forges import detect
-from .forges.base import CRListItem
+from .forges import cr, detect
 from .utils import exec, jj
 
 log = logging.getLogger(__name__)
@@ -100,11 +99,11 @@ def pre_commit_change(change_id: str, pc_cmd: str | None, arc_cmd: str | None) -
             raise exc.UserError(f"pre-commit checks failed for change {change_id}")
 
 
-def display_list(items: list[CRListItem], multi: bool) -> None:
+def display_list(items: list[cr.CodeReview], multi: bool) -> None:
     """Display a list of code review items in a formatted table."""
     console = Console()
 
-    all_forge_urls = set(item.forge_url for item in items)
+    all_forge_urls = set(item.forge.forge_url for item in items)
     all_extra_keys = set()
     for item in items:
         all_extra_keys.update(item.extra.keys())
@@ -124,13 +123,13 @@ def display_list(items: list[CRListItem], multi: bool) -> None:
     for item in items:
         row = []
         if len(all_forge_urls) > 1:
-            row.append(f"[link={item.forge_url}]{item.forge_name}[/link]")
+            row.append(item.forge)
         if multi:
-            row.append(item.project_id)
-        row.append(item.identifier)
-        row.append(f"[link={item.url}]{item.title}[/link]")
+            row.append(item.forge.project_id)
+        row.append(item.cr_id)
+        row.append(item.title)
         row.append(item.state)
-        row.append(item.blockers)
+        row.append(", ".join(b.__rich__() for b in item.blockers))
         table.add_row(
             *row,
             *[

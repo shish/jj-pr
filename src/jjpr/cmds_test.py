@@ -7,34 +7,50 @@ import pytest
 
 from . import cmds
 from .conftest import tmp_cwd
-from .forges.base import CRListItem
+from .forges import cr
+from .forges.base import Forge
+
+
+class DummyForge(Forge):
+    def __init__(
+        self, url: str = "https://test.example.com", project_id: str = "bob/test-repo"
+    ):
+        self.forge_url = httpx.URL(url)
+        self.project_id = project_id
+
+    def __rich__(self) -> str:
+        return f"[link={self.forge_url}]DummyForge[/link]"
+
+    def push_cr(
+        self, ref: str | None, draft: bool = False, message: str | None = None
+    ) -> None:
+        pass
+
+    def checkout_cr(self, identifier: str) -> None:
+        pass
+
+    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
+        return []
 
 
 def make_cr_list_item(
-    forge_name: str = "TestForge",
-    forge_url: httpx.URL | None = None,
-    project_id: str = "test-project",
-    identifier: str = "123",
+    forge: Forge = DummyForge(),
+    cr_id: str = "123",
     title: str = "Test Item",
     url: httpx.URL | None = None,
-    state: str = "Open",
-    blockers: str = "",
+    state: cr.State = cr.State("Open", color="cyan"),
+    blockers: list[cr.Blocker] = [],
     extra: dict[str, str] | None = None,
-) -> CRListItem:
+) -> cr.CodeReview:
     """Create a CRListItem with sensible defaults for testing."""
-    if forge_url is None:
-        forge_url = httpx.URL("https://test.example.com")
     if url is None:
-        url = httpx.URL(f"https://test.example.com/item/{identifier}")
+        url = httpx.URL(f"https://test.example.com/item/{cr_id}")
     if extra is None:
         extra = {}
-    return CRListItem(
-        forge_name=forge_name,
-        forge_url=forge_url,
-        project_id=project_id,
-        identifier=identifier,
-        title=title,
-        url=url,
+    return cr.CodeReview(
+        forge=forge,
+        cr_id=cr_id,
+        title=cr.Title(title, url=url),
         state=state,
         blockers=blockers,
         extra=extra,
@@ -175,12 +191,12 @@ class TestDisplayList:
     def test_display_list_multi(self):
         """Test display_list with multiple items from same forge."""
         items = [
-            make_cr_list_item(identifier="123", title="Fix bug"),
+            make_cr_list_item(cr_id="123", title="Fix bug"),
             make_cr_list_item(
-                identifier="124",
+                cr_id="124",
                 title="Add feature",
-                state="In Review",
-                blockers="Needs approval",
+                state=cr.State("In Review"),
+                blockers=[cr.Blocker(name="Needs Approval", color="yellow")],
                 extra={"Attachments": "42"},
             ),
         ]
@@ -192,29 +208,25 @@ class TestDisplayList:
 
     def test_display_list_single_item(self):
         """Test display_list with single item."""
-        items = [make_cr_list_item(identifier="123", title="Fix bug")]
+        items = [make_cr_list_item(cr_id="123", title="Fix bug")]
         cmds.display_list(items, multi=False)
 
     def test_display_list_multi_forge_urls(self):
         """Test display_list with items from multiple forges."""
         items = [
             make_cr_list_item(
-                forge_name="GitHubForge",
-                forge_url=httpx.URL("https://github.com"),
-                project_id="proj1",
-                identifier="123",
+                forge=DummyForge("https://github.com", "bob/proj1"),
+                cr_id="123",
                 title="Feature 1",
                 url=httpx.URL("https://github.com/repo/123"),
-                state="Open",
+                state=cr.State("Open", color="yellow"),
             ),
             make_cr_list_item(
-                forge_name="GerritForge",
-                forge_url=httpx.URL("https://gerrit.example.com"),
-                project_id="proj2",
-                identifier="456",
+                forge=DummyForge("https://gerrit.example.com", "proj2"),
+                cr_id="456",
                 title="Fix 1",
                 url=httpx.URL("https://gerrit.example.com/change/456"),
-                state="Reviewing",
+                state=cr.State("Reviewing", color="cyan"),
             ),
         ]
         cmds.display_list(items, multi=True)
@@ -223,16 +235,16 @@ class TestDisplayList:
         """Test display_list with extra fields in items."""
         items = [
             make_cr_list_item(
-                identifier="789",
+                cr_id="789",
                 title="Task",
-                state="In Progress",
-                blockers="Waiting",
+                state=cr.State("In Progress", color="cyan"),
+                blockers=[cr.Blocker(name="Waiting")],
                 extra={"Priority": "High", "Assignee": "John"},
             ),
             make_cr_list_item(
-                identifier="790",
+                cr_id="790",
                 title="Another Task",
-                state="Done",
+                state=cr.State("Done", color="green"),
                 extra={"Priority": "Low"},
             ),
         ]

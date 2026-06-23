@@ -8,7 +8,8 @@ import httpx
 
 from ... import exc
 from ...utils import exec, git, jj
-from ..base import CRListItem, Forge
+from .. import cr
+from ..base import Forge
 from .client import PhabricatorClient
 
 log = logging.getLogger(__name__)
@@ -24,8 +25,8 @@ class Phabricator(Forge):
             self.repo_config = json.loads(Path(".arcconfig").read_text())
             self.forge_url = httpx.URL(self.repo_config["phabricator.uri"])
             self.project_id = self.repo_config["repository.callsign"]
-            self.merge_target = self.repo_config.get(
-                "arc.land.onto.default", git.get_merge_target()
+            self.merge_target = (
+                self.repo_config.get("arc.land.onto.default") or git.get_merge_target()
             )
             self.client = PhabricatorClient(self.forge_url)
         except Exception as e:
@@ -83,17 +84,17 @@ class Phabricator(Forge):
 
         # If we're creating a new rev, populate the metadata from the commit message
         if not rev:
-            ts = self.client.call(
+            trs = self.client.call(
                 "differential.parsecommitmessage",
                 corpus=jj.description_of(change_id),
             )["transactions"]
             for r in {"title", "summary", "testPlan"}:
-                for t in ts:
-                    if t["type"] == r:
+                for tr in trs:
+                    if tr["type"] == r:
                         break
                 else:
                     data["transactions"].append({"type": r, "value": "-"})
-            data["transactions"].extend(ts)
+            data["transactions"].extend(trs)
 
         # If --draft, set that flag
         if draft:
@@ -145,7 +146,7 @@ class Phabricator(Forge):
         log.info(f"Checking out Phabricator diff {identifier}")
         exec.run(["arc", "patch", identifier], cap=False)
 
-    def list_crs(self, all_projects: bool = False) -> list[CRListItem]:
+    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
         log.info(
             f"Listing diffs for {self.remote_url} ({'*' if all_projects else self.project_id})"
         )
@@ -171,21 +172,20 @@ class Phabricator(Forge):
         )["data"]
 
         return [
-            CRListItem(
-                forge_name="Phabricator",
-                forge_url=self.forge_url,
-                project_id=self.project_id,
-                identifier=str(rev["id"]),
-                title=rev["fields"]["title"],
-                url=httpx.URL(rev["fields"]["uri"]),
+            cr.CodeReview(
+                forge=self,
+                cr_id=str(rev["id"]),
+                title=cr.Title(
+                    rev["fields"]["title"], url=httpx.URL(rev["fields"]["uri"])
+                ),
                 state=_colour_state(rev["fields"]["status"]["name"]),
-                blockers="",
+                blockers=[],
             )
             for rev in revs
         ]
 
 
-def _colour_state(state: str) -> str:
+def _colour_state(state: str) -> cr.State:
     s2c = {
         "Draft": "cyan",
         "Changes Planned": "cyan",
@@ -194,4 +194,4 @@ def _colour_state(state: str) -> str:
         "Accepted": "green",
     }
     c = s2c.get(state, "yellow")
-    return f"[{c}]{state}[/{c}]"
+    return cr.State(state, color=c)
