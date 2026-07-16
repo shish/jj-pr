@@ -63,8 +63,8 @@ def main(
     ctx.obj = GlobalOptions(cmds.Repo(path, remote), format)
 
 
-@app.command("submit")
-def submit_command(
+@app.command("upload")
+def upload_command(
     ctx: typer.Context,
     ref: str | None = typer.Argument(None, help="Ref to push"),
     pre_commit: bool = typer.Option(
@@ -84,12 +84,12 @@ def submit_command(
         help="Commit/PR message",
     ),
 ) -> None:
-    """Submit current stack to the forge."""
+    """Upload current stack to the forge."""
     r = t.cast(GlobalOptions, ctx.obj).repo
     with r.chdir():
         if pre_commit:
             cmds.pre_commit_stack(ref)
-        r.remote.submit_cr(ref, draft=draft, message=message)
+        r.remote.upload_cr(ref, draft=draft, message=message)
 
 
 @app.command("rebase")
@@ -109,15 +109,15 @@ def rebase_command(
         jj.rebase(d="trunk()", r="mutable()" if all else "trunk()..@")
 
 
-@app.command("checkout")
-def checkout_command(
+@app.command("download")
+def download_command(
     ctx: typer.Context,
     identifier: str = typer.Argument(None, help="PR/Diff/CR ID"),
 ) -> None:
-    """Check out a PR/CR/Diff from the forge."""
+    """Download a PR/CR/Diff from the forge."""
     r = t.cast(GlobalOptions, ctx.obj).repo
     with r.chdir():
-        r.remote.checkout_cr(identifier)
+        r.remote.download_cr(identifier)
 
 
 @app.command("list")

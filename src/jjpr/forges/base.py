@@ -34,17 +34,17 @@ class Forge(ABC):
         return f"[link={self.forge_url}]{self.__class__.__name__}[/link]"
 
     @abstractmethod
-    def submit_cr(
+    def upload_cr(
         self,
         ref: str | None,
         draft: bool = False,
         message: str | None = None,
     ) -> None:
-        """Submit changes to the forge."""
+        """Upload changes to the forge."""
 
     @abstractmethod
-    def checkout_cr(self, identifier: str) -> None:
-        """Checkout changes from the forge."""
+    def download_cr(self, identifier: str) -> None:
+        """Download changes from the forge."""
 
     @abstractmethod
     def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:

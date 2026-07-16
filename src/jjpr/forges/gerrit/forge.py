@@ -31,7 +31,7 @@ class Gerrit(Forge):
 
         self.client = GerritClient(self.forge_url)
 
-    def submit_cr(
+    def upload_cr(
         self,
         ref: str | None,
         draft: bool = False,
@@ -50,7 +50,7 @@ class Gerrit(Forge):
             remote_branch=self.merge_target,
         )
 
-    def checkout_cr(self, identifier: str) -> None:
+    def download_cr(self, identifier: str) -> None:
         log.info(f"Fetching Gerrit change {identifier}")
         # Query API to get the latest patch set number
         change_data_response = self.client.get(

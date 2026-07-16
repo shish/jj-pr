@@ -15,14 +15,14 @@ class DummyForge(base.Forge):
         ):
             super().__init__("https://example.com/dummy.git")
 
-    def submit_cr(
+    def upload_cr(
         self,
         ref: str | None,
         draft: bool = False,
         message: str | None = None,
     ) -> None: ...
 
-    def checkout_cr(self, identifier: str) -> None: ...
+    def download_cr(self, identifier: str) -> None: ...
 
     def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
         return []

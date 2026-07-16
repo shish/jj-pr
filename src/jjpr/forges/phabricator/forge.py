@@ -35,7 +35,7 @@ class Phabricator(Forge):
         except Exception as e:
             raise exc.UserError(f"Error loading repo config from .arcconfig: {e}")
 
-    def submit_cr(
+    def upload_cr(
         self,
         ref: str | None,
         draft: bool = False,
@@ -145,7 +145,7 @@ class Phabricator(Forge):
             constraints={"callsigns": [callsign]},
         )["data"][0]["phid"]
 
-    def checkout_cr(self, identifier: str) -> None:
+    def download_cr(self, identifier: str) -> None:
         log.info(f"Checking out Phabricator diff {identifier}")
         exec.run(["arc", "patch", identifier], cap=False)
 

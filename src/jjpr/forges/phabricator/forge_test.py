@@ -30,11 +30,11 @@ class TestMeta:
         assert f.merge_target == "main"
 
 
-class TestSubmit:
+class TestUpload:
     def test_push_one_head(self, clone: Path):
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
-        run_cmd("jj", "pr", "-vv", "submit", "-m", "Test push 1")
+        run_cmd("jj", "pr", "-vv", "upload", "-m", "Test push 1")
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 1
@@ -43,7 +43,7 @@ class TestSubmit:
     def test_push_one_cwd(self, clone: Path):
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
-        run_cmd("jj", "pr", "submit", "-m", "Test push 1")
+        run_cmd("jj", "pr", "upload", "-m", "Test push 1")
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 1
@@ -52,11 +52,11 @@ class TestSubmit:
     def test_push_one_then_two(self, clone: Path):
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
-        run_cmd("jj", "pr", "submit", "-m", "Test push 1")
+        run_cmd("jj", "pr", "upload", "-m", "Test push 1")
 
         (clone / "test_file2.txt").write_text("Test content 2")
         run_cmd("jj", "commit", "-m", "Test commit 2")
-        run_cmd("jj", "pr", "submit", "-m", "Test push 2")
+        run_cmd("jj", "pr", "upload", "-m", "Test push 2")
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 2
@@ -71,7 +71,7 @@ class TestSubmit:
         (clone / "test_file2.txt").write_text("Test content 2")
         run_cmd("jj", "commit", "-m", "Test commit 2")
 
-        run_cmd("jj", "pr", "submit", "-m", "Test push 1+2")
+        run_cmd("jj", "pr", "upload", "-m", "Test push 1+2")
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 2
@@ -84,7 +84,7 @@ class TestLog:
     def test_log(self, clone: Path):
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
-        run_cmd("jj", "pr", "submit")
+        run_cmd("jj", "pr", "upload")
 
         log_output = run_cmd("jj", "pr", "log")
         assert "Test commit 1" in log_output

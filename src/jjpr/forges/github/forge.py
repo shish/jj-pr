@@ -30,7 +30,7 @@ class GitHub(Forge):
                 f"Invalid GitHub remote URL format: {self.remote_url}. Expected format: owner/repo"
             )
 
-    def submit_cr(
+    def upload_cr(
         self,
         ref: str | None,
         draft: bool = False,
@@ -83,7 +83,7 @@ class GitHub(Forge):
                     args.extend(["-b", message])
                 exec.run(args)
 
-    def checkout_cr(self, identifier: str) -> None:
+    def download_cr(self, identifier: str) -> None:
         log.info(f"Checking out PR {identifier} from {self.remote_url}")
         exec.run(
             [

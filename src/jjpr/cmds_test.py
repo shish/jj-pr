@@ -21,12 +21,12 @@ class DummyForge(Forge):
     def __rich__(self) -> str:
         return f"[link={self.forge_url}]DummyForge[/link]"
 
-    def submit_cr(
+    def upload_cr(
         self, ref: str | None, draft: bool = False, message: str | None = None
     ) -> None:
         pass
 
-    def checkout_cr(self, identifier: str) -> None:
+    def download_cr(self, identifier: str) -> None:
         pass
 
     def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
