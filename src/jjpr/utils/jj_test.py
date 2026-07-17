@@ -11,18 +11,18 @@ from . import jj
 log = logging.getLogger(__name__)
 
 
-class TestRun:
-    def test_basic_command(self, tmp_repo: Path):
+class TestUtils:
+    def test_run_basic_command(self, tmp_repo: Path):
         output = jj.run("log", "-r", "@", "--no-graph", "-T", "''")
         assert output is not None
         assert isinstance(output, str)
 
-    def test_invalid_command(self, tmp_repo: Path):
+    def test_run_invalid_command(self, tmp_repo: Path):
         with pytest.raises(jj.JjError):
             jj.run("invalid-command-xyz")
 
 
-class TestBasicCommands:
+class TestDirectMappings:
     def test_bookmark_create_and_advance(self, repo_with_commits: Path):
         change_id = jj.change_id("@-")
         bookmark_name = "test-bookmark"
@@ -55,6 +55,25 @@ class TestBasicCommands:
         description = jj.description_of(change_id)
         assert new_description in description
 
+    def test_gerrit_upload_basic(self, repo_with_commits: Path):
+        change_id = jj.change_id("@")
+        with mock.patch("jjpr.utils.jj.run"):
+            jj.gerrit_upload(change_id)
+
+    def test_gerrit_upload_with_all_options(self, repo_with_commits: Path):
+        change_id = jj.change_id("@")
+        with mock.patch("jjpr.utils.jj.run") as mock_run:
+            jj.gerrit_upload(
+                change_id, wip=True, message="Test", remote_branch="refs/for/main"
+            )
+            mock_run.assert_called_once()
+            args = mock_run.call_args[0]
+            assert "--wip" in args
+            assert "--message" in args
+            assert "Test" in args
+            assert "--remote-branch" in args
+            assert "refs/for/main" in args
+
     def test_git_fetch(self, repo_with_commits: Path):
         with mock.patch("jjpr.utils.jj.run") as mock_run:
             jj.git_fetch("origin")
@@ -85,25 +104,51 @@ class TestBasicCommands:
         assert os.getcwd() == str(jj.root())
 
 
-class TestGerritUpload:
-    def test_gerrit_upload_basic(self, repo_with_commits: Path):
-        change_id = jj.change_id("@")
-        with mock.patch("jjpr.utils.jj.run"):
-            jj.gerrit_upload(change_id)
+class TestChangeInfo:
+    def test_parents_of_commit(self, repo_with_commits: Path):
+        stack = jj.checkable_stack()
+        assert len(stack) > 1
+        assert jj.parents_of(stack[1]) == {stack[0]}
 
-    def test_gerrit_upload_with_all_options(self, repo_with_commits: Path):
-        change_id = jj.change_id("@")
-        with mock.patch("jjpr.utils.jj.run") as mock_run:
-            jj.gerrit_upload(
-                change_id, wip=True, message="Test", remote_branch="refs/for/main"
-            )
-            mock_run.assert_called_once()
-            args = mock_run.call_args[0]
-            assert "--wip" in args
-            assert "--message" in args
-            assert "Test" in args
-            assert "--remote-branch" in args
-            assert "refs/for/main" in args
+    def test_parents_of_root(self, repo_with_commits: Path):
+        assert jj.parents_of(jj.change_id("root()")) == set()
+
+    def test_files_in_commit(self, repo_with_commits: Path):
+        stack = jj.checkable_stack()
+        change_id = stack[1]
+        files = jj.files_in(change_id)
+        assert files == {"file2.txt"}
+
+    def test_files_in_commit_no_files(self, repo_with_commits: Path):
+        run_cmd("jj", "new")
+        assert jj.files_in(jj.change_id("@")) == set()
+
+    def test_description_of_commit(self, repo_with_commits: Path):
+        stack = jj.checkable_stack()
+        change_id = stack[0]
+        description = jj.description_of(change_id)
+        assert "Commit" in description or "Initial" in description
+
+    def test_branches_pointing_to_with_bookmarks(self, repo_with_commits: Path):
+        c = jj.change_id("feat/commit-2")
+        branches = jj.branches_pointing_to(c)
+        assert branches == {"feat/commit-2"}
+
+    def test_branches_pointing_to_with_prefix(self, repo_with_commits: Path):
+        c = jj.change_id("feat/commit-2")
+        branches = jj.branches_pointing_to(c, prefix="feat/")
+        assert branches == {"feat/commit-2"}
+        branches = jj.branches_pointing_to(c, prefix="pr/")
+        assert branches == set()
+
+    def test_branches_pointing_to_no_branches(self, tmp_repo: Path):
+        current = jj.change_id("root()")
+        branches = jj.branches_pointing_to(current)
+        assert branches == set()
+
+    def test_commit_id(self, repo_with_commits: Path):
+        commit_id = jj.commit_id(jj.change_id("@"))
+        assert len(commit_id) == 40  # SHA-1 hash length
 
 
 class TestChangeId:
@@ -138,16 +183,16 @@ class TestClosestWork:
             jj.closest_work()
 
 
-class TestCheckableStack:
-    def test_with_commits(self, repo_with_commits: Path):
-        stack = jj.checkable_stack()
+class TestPushableStack:
+    def test_require_description(self, repo_with_commits: Path):
+        stack = jj.pushable_stack()
         assert isinstance(stack, list)
         assert len(stack) >= 3
 
 
-class TestPushableStack:
-    def test_require_description(self, repo_with_commits: Path):
-        stack = jj.pushable_stack()
+class TestCheckableStack:
+    def test_with_commits(self, repo_with_commits: Path):
+        stack = jj.checkable_stack()
         assert isinstance(stack, list)
         assert len(stack) >= 3
 
@@ -165,55 +210,6 @@ class TestBookmarks:
         jj.bookmark_advance("mywork", "@-")
         bookmarks = jj.bookmarks()
         assert "mywork@origin" in bookmarks
-
-
-class TestParentsOf:
-    def test_commit(self, repo_with_commits: Path):
-        stack = jj.checkable_stack()
-        assert len(stack) > 1
-        assert jj.parents_of(stack[1]) == {stack[0]}
-
-    def test_root_has_no_parents(self, repo_with_commits: Path):
-        assert jj.parents_of(jj.change_id("root()")) == set()
-
-
-class TestFilesIn:
-    def test_commit(self, repo_with_commits: Path):
-        stack = jj.checkable_stack()
-        change_id = stack[1]
-        files = jj.files_in(change_id)
-        assert files == {"file2.txt"}
-
-    def test_files_in_commit_no_files(self, repo_with_commits: Path):
-        run_cmd("jj", "new")
-        assert jj.files_in(jj.change_id("@")) == set()
-
-
-class TestBranchesPointingTo:
-    def test_with_bookmarks(self, repo_with_commits: Path):
-        c = jj.change_id("feat/commit-2")
-        branches = jj.branches_pointing_to(c)
-        assert branches == {"feat/commit-2"}
-
-    def test_with_prefix(self, repo_with_commits: Path):
-        c = jj.change_id("feat/commit-2")
-        branches = jj.branches_pointing_to(c, prefix="feat/")
-        assert branches == {"feat/commit-2"}
-        branches = jj.branches_pointing_to(c, prefix="pr/")
-        assert branches == set()
-
-    def test_branches_pointing_to_no_branches(self, tmp_repo: Path):
-        current = jj.change_id("root()")
-        branches = jj.branches_pointing_to(current)
-        assert branches == set()
-
-
-class TestDescriptionOf:
-    def test_commit(self, repo_with_commits: Path):
-        stack = jj.checkable_stack()
-        change_id = stack[0]
-        description = jj.description_of(change_id)
-        assert "Commit" in description or "Initial" in description
 
 
 class TestWithEdit:

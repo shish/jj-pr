@@ -7,6 +7,10 @@ from contextlib import contextmanager
 
 from . import exec
 
+
+#######################################################################
+# Utilities
+
 log = logging.getLogger(__name__)
 
 # Type aliases
@@ -97,10 +101,62 @@ def root() -> str:
 
 
 #######################################################################
+# change_info and wrappers
+
+
+def change_info(change_id: ChangeID, t: str) -> str:
+    return run("log", "-r", change_id, "--no-graph", "-T", t)
+
+
+def parents_of(change_id: ChangeID) -> set[ChangeID]:
+    """
+    List all parent change IDs for a given change ID
+    """
+    output = change_info(
+        change_id, 'parents.map(|p| p.change_id().short()).join("\\n")'
+    )
+    return {p for p in output.split("\n") if p}
+
+
+def files_in(change_id: ChangeID) -> set[str]:
+    """
+    List all files changed in a given change ID
+    """
+    output = change_info(change_id, 'self.diff().files().map(|f| f.path()).join("\\n")')
+    return {f for f in output.split("\n") if f}
+
+
+def description_of(change_id: ChangeID) -> str:
+    """
+    Get the description of a commit
+    """
+    output = change_info(change_id, "self.description()")
+    return output.strip()
+
+
+def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> set[str]:
+    """
+    Find all branches pointing to a given change ID, optionally filtering by prefix
+    """
+    output = change_info(change_id, 'self.bookmarks().map(|b| b.name()).join("\\n")')
+    return {b for b in output.split("\n") if b and b.startswith(prefix)}
+
+
+def commit_id(change_id: ChangeID) -> str:
+    """
+    Get the commit ID for a given change ID
+    """
+    return change_info(change_id, "self.commit_id()")
+
+
+#######################################################################
 # Extra helpers
 
 
 def change_ids(r: RevSet) -> list[ChangeID]:
+    """
+    Return a list of change IDs for the given revset, in reverse order (oldest first).
+    """
     lines = run(
         "log",
         "-r",
@@ -115,6 +171,10 @@ def change_ids(r: RevSet) -> list[ChangeID]:
 
 
 def change_id(revset: RevSet) -> ChangeID:
+    """
+    Return the change ID for the given revset (eg "@" or "trunk()");
+    raise an error if it resolves to zero or multiple change IDs.
+    """
     cs = change_ids(revset)
     if len(cs) == 0:
         raise ValueError(f"Revset {revset!r} did not resolve to any change IDs")
@@ -124,27 +184,35 @@ def change_id(revset: RevSet) -> ChangeID:
 
 
 def closest_work() -> ChangeID:
+    """
+    Return the closest non-empty mutable commit
+
+    (Normally either current commit, or parent when current commit is empty)
+    """
     return change_id("heads(::@ & mutable() & (~empty() | merges()))")
 
 
 def pushable_stack() -> list[ChangeID]:
-    # Find commits in the current stack (mutable commits from the trunk
-    # up to and including the current commit), with a commit message
-    # and file changes (ie commits which can be pushed for review)
+    """
+    Find commits in the current stack (mutable commits from the trunk
+    up to and including the current commit), with a commit message
+    and file changes
+
+    (ie commits which can be meaningfully pushed for review)
+    """
     return change_ids(
         'trunk()..heads(::@ & mutable() & ~description(exact:"") & (~empty() | merges()))'
     )
 
 
 def checkable_stack() -> list[ChangeID]:
-    # Find commits in the current stack (mutable commits from the trunk
-    # up to and including the current commit), with file changes that
-    # that can be checked by pre-commit hooks or similar
+    """
+    Find commits in the current stack (mutable commits from the trunk
+    up to and including the current commit), with file changes
+
+    (ie, commits that can be meaningfully pre-commit checked)
+    """
     return change_ids("trunk()..heads(::@ & mutable() & (~empty() | merges()))")
-
-
-def change_info(change_id: ChangeID, t: str) -> str:
-    return run("log", "-r", change_id, "--no-graph", "-T", t)
 
 
 def bookmarks() -> dict[str, dict[str, t.Any]]:
@@ -156,28 +224,6 @@ def bookmarks() -> dict[str, dict[str, t.Any]]:
             name = f"{name}@{js['remote']}"
         bs[name] = js
     return bs
-
-
-def parents_of(change_id: ChangeID) -> set[ChangeID]:
-    output = change_info(
-        change_id, 'parents.map(|p| p.change_id().short()).join("\\n")'
-    )
-    return {p for p in output.split("\n") if p}
-
-
-def files_in(change_id: ChangeID) -> set[str]:
-    output = change_info(change_id, 'self.diff().files().map(|f| f.path()).join("\\n")')
-    return {f for f in output.split("\n") if f}
-
-
-def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> set[str]:
-    output = change_info(change_id, 'self.bookmarks().map(|b| b.name()).join("\\n")')
-    return {b for b in output.split("\n") if b and b.startswith(prefix)}
-
-
-def description_of(change_id: ChangeID) -> str:
-    output = change_info(change_id, "self.description()")
-    return output.strip()
 
 
 @contextmanager
