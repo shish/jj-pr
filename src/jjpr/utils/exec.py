@@ -7,18 +7,19 @@ log = logging.getLogger(__name__)
 
 
 @t.overload
-def run(cmd: list[str], cap: t.Literal[True]) -> str: ...
+def run(*args: str, cap: t.Literal[True]) -> str: ...
 
 
 @t.overload
-def run(cmd: list[str], cap: t.Literal[False]) -> None: ...
+def run(*args: str, cap: t.Literal[False]) -> None: ...
 
 
 @t.overload
-def run(cmd: list[str]) -> str: ...
+def run(*args: str) -> str: ...
 
 
-def run(cmd: list[str], cap: bool = True) -> str | None:
+def run(*args: str, cap: bool = True) -> str | None:
+    cmd = list(args)
     try:
         if not cap:
             log.debug(f"run({shlex.join(cmd)}) -> ...")

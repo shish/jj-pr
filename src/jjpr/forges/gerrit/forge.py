@@ -70,8 +70,8 @@ class Gerrit(Forge):
 
         # Fetch the latest patch set
         remote_id = f"refs/remotes/{self.remote}/change-{identifier}"
-        exec.run(["git", "fetch", self.remote, f"{current_rev}:{remote_id}"])
-        exec.run(["git", "checkout", remote_id])
+        exec.run("git", "fetch", self.remote, f"{current_rev}:{remote_id}")
+        exec.run("git", "checkout", remote_id)
 
     def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
         """List the user's open changes in Gerrit, showing any blockers."""

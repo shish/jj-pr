@@ -23,7 +23,7 @@ class Repo:
     ):
         self.path = path.resolve()
         with self.chdir():
-            default_remote = exec.run(["git", "remote"]).splitlines()[0]
+            default_remote = exec.run("git", "remote").splitlines()[0]
             forge = detect.get_forge(remote or default_remote)
         self.remote = forge
 
@@ -82,10 +82,10 @@ def pre_commit_change(change_id: str, pc_cmd: str | None, arc_cmd: str | None) -
         print(f"Affected files: {shlex.join(files)}")
         try:
             if arc_cmd:
-                exec.run([arc_cmd, "lint", "--apply-patches"], cap=False)
-            exec.run(["git", "add", "--all"], cap=False)
+                exec.run(arc_cmd, "lint", "--apply-patches", cap=False)
+            exec.run("git", "add", "--all", cap=False)
             if pc_cmd:
-                exec.run([pc_cmd], cap=False)
+                exec.run(pc_cmd, cap=False)
         except Exception:
             raise exc.UserError(f"pre-commit checks failed for change {change_id}")
 

@@ -32,9 +32,9 @@ def run(*args: str) -> str: ...
 
 def run(*args: str, cap: bool = True) -> str | None:
     try:
-        return exec.run(["jj"] + list(args), cap=cap)
+        return exec.run("jj", *args, cap=cap)  # type: ignore
     except subprocess.CalledProcessError as e:
-        raise JjError(f"Failed to run {shlex.join(['jj'] + list(args))!r}") from e
+        raise JjError(f"Failed to run {shlex.join(['jj', *args])!r}") from e
 
 
 #######################################################################

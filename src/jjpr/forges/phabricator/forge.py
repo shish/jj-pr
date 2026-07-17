@@ -147,7 +147,7 @@ class Phabricator(Forge):
 
     def download_cr(self, identifier: str) -> None:
         log.info(f"Checking out Phabricator diff {identifier}")
-        exec.run(["arc", "patch", identifier], cap=False)
+        exec.run("arc", "patch", identifier, cap=False)
 
     def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
         log.info(
