@@ -21,19 +21,35 @@ PhID = str
 class Phabricator(Forge):
     def __init__(self, remote: str):
         super().__init__(remote)
-        try:
-            self.repo_config = json.loads(Path(".arcconfig").read_text())
-            uri = self.repo_config.get("phabricator.uri")
-            self.forge_url = (
-                httpx.URL(uri) if uri else self.remote_url.copy_with(path=None)
-            )
-            self.project_id = self.repo_config["repository.callsign"]
-            self.merge_target = (
-                self.repo_config.get("arc.land.onto.default") or git.get_merge_target()
-            )
-            self.client = PhabricatorClient(self.forge_url)
-        except Exception as e:
-            raise exc.UserError(f"Error loading repo config from .arcconfig: {e}")
+
+        config_path = Path(".arcconfig")
+        if config_path.exists():
+            repo_config = json.loads(Path(".arcconfig").read_text())
+        else:
+            repo_config = {}
+
+        if uri := repo_config.get("phabricator.uri"):
+            self.forge_url = httpx.URL(uri)
+        else:
+            self.forge_url = self.remote_url.copy_with(path=None)
+        self.client = PhabricatorClient(self.forge_url)
+
+        if callsign := repo_config.get("repository.callsign"):
+            self.project_id = callsign
+        else:
+            self.project_id = self.client.call(
+                "diffusion.repository.search",
+                constraints={"uris": [str(self.remote_url)]},
+            )["data"][0]["fields"]["callsign"]
+
+        if merge_target := repo_config.get("arc.land.onto.default"):
+            self.merge_target = merge_target
+        else:
+            self.merge_target = git.get_merge_target()
+
+        log.info(
+            f"Phabricator settings:\n  forge_url: {self.forge_url}\n  project_id: {self.project_id}\n  merge_target: {self.merge_target}"
+        )
 
     def upload_cr(
         self,
