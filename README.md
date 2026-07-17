@@ -99,3 +99,17 @@ uv run pytest -v --no-cov tests/integration
 # Delete test environment
 docker compose down -v
 ```
+
+## Terminology
+
+Making a table because terminology is inconsistent (and occasionally mutually-exclusive) across forges. See sapling using "submit" to mean "upload to be reviewed" while gerrit uses "submit" to mean "merge into main branch", which can have dangerous and difficult to undo consequences if you mix them up...
+
+| Concept | Git | JJ | Sapling | GitHub | Gerrit | Phabricator | JJ-PR |
+| ------- | --- | -- | ------- | ------ | ------ | ----------  | ----- |
+| Unit of work | commit | change | commit | commit | change | diff | change |
+| Unit of review | - | - | - | branch | change | revision | branch / change |
+| Send for review | - | `jj gerrit upload` | `sl pr submit` | `gh pr create` | `git push` | `arc diff` | `jj pr upload` |
+| Check code to be reviewed | - | - | `sl pr pull` | `gh pr checkout` | `git fetch` | `arc patch` | `jj pr download` |
+| Merge reviewed code | - | - | - | `gh pr merge`, `--rebase` / `--squash` / `--merge` flags | "submit" button (server-side rebase) | `arc land` (client-side rebase) | - |
+| List open reviews | - | - | `sl pr list` | `gh pr list` | - | `arc list` | `jj pr list` |
+| Log with review status | - | - | `sl ssl` | - | - | - | `jj pr log` |
