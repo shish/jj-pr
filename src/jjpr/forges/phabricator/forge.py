@@ -93,6 +93,30 @@ class Phabricator(Forge):
         )
         data["transactions"].append({"type": "update", "value": diff_data["phid"]})
 
+        # Push to staging (if configured)
+        # repository.query is deprecated, but diffusion.repository.search
+        # doesn't return the staging URI, so...
+        # (ignore type because returning an array is correct but non-standard)
+        repo_data = self.client.call(  # type: ignore
+            "repository.query",
+            callsigns=[self.project_id],
+        )[0]
+        staging_uri = repo_data.get("staging", {}).get("uri")
+        if staging_uri:
+            log.info(f"Pushing {change_id} to staging at {staging_uri}")
+            base_hash = jj.commit_id(f"{change_id}-")
+            diff_hash = jj.commit_id(change_id)
+            exec.run(
+                "git",
+                "push",
+                "--no-verify",
+                "--",
+                staging_uri,
+                f"{base_hash}:refs/tags/phabricator/base/{diff_data['id']}",
+                f"{diff_hash}:refs/tags/phabricator/diff/{diff_data['id']}",
+                cap=False,
+            )
+
         # Set parent diff if our parent commit contains a diff ID
         parents = jj.change_ids(f"{change_id}- & mutable()")
         parent_revs = [self._change_to_revision(p) for p in parents]
