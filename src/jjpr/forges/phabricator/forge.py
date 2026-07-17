@@ -70,12 +70,12 @@ class Phabricator(Forge):
             data["objectIdentifier"] = self._revision_to_phid(rev)
 
         # Attach a diff
-        diff_id = self.client.call(
+        diff_data = self.client.call(
             "differential.createrawdiff",
             diff=jj.run("diff", "--git", "-r", change_id),
             repositoryPHID=self._callsign_to_phid(self.project_id),
-        )["phid"]
-        data["transactions"].append({"type": "update", "value": diff_id})
+        )
+        data["transactions"].append({"type": "update", "value": diff_data["phid"]})
 
         # Set parent diff if our parent commit contains a diff ID
         parents = jj.change_ids(f"{change_id}- & mutable()")
