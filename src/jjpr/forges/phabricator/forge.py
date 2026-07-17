@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import socket
 import typing as t
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from ... import exc
 from ...utils import exec, git, jj
 from .. import cr
 from ..base import Forge
+from . import arcdiff
 from .client import PhabricatorClient
 
 log = logging.getLogger(__name__)
@@ -86,9 +88,20 @@ class Phabricator(Forge):
             data["objectIdentifier"] = self._revision_to_phid(rev)
 
         # Attach a diff
+        diff_text = jj.run("diff", "--git", "-r", change_id)
+        changes = arcdiff.changes_to_conduit(arcdiff.parse_diff(diff_text))
         diff_data = self.client.call(
-            "differential.createrawdiff",
-            diff=jj.run("diff", "--git", "-r", change_id),
+            "differential.creatediff",
+            changes=changes,
+            sourceMachine=socket.gethostname(),
+            sourcePath=jj.root(),
+            branch=self.merge_target,
+            sourceControlSystem="git",
+            sourceControlPath="/",
+            sourceControlBaseRevision=jj.commit_id(f"{change_id}-"),
+            creationMethod="jjpr",
+            lintStatus=arcdiff.LintStatus.NONE,
+            unitStatus=arcdiff.UnitStatus.NONE,
             repositoryPHID=self._callsign_to_phid(self.project_id),
         )
         data["transactions"].append({"type": "update", "value": diff_data["phid"]})
@@ -112,8 +125,8 @@ class Phabricator(Forge):
                 "--no-verify",
                 "--",
                 staging_uri,
-                f"{base_hash}:refs/tags/phabricator/base/{diff_data['id']}",
-                f"{diff_hash}:refs/tags/phabricator/diff/{diff_data['id']}",
+                f"{base_hash}:refs/tags/phabricator/base/{diff_data['diffid']}",
+                f"{diff_hash}:refs/tags/phabricator/diff/{diff_data['diffid']}",
                 cap=False,
             )
 

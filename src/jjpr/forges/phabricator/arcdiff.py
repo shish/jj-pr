@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 from typing import Any, NoReturn, Optional
 
 
@@ -38,6 +38,24 @@ class ChangeType(IntEnum):
 class FileType(IntEnum):
     TEXT = 1
     BINARY = 3
+
+
+class LintStatus(StrEnum):
+    NONE = "none"
+    OKAY = "okay"
+    WARN = "warn"
+    FAIL = "fail"
+    SKIP = "skip"
+    AUTO_SKIP = "auto_skip"
+
+
+class UnitStatus(StrEnum):
+    NONE = "none"
+    OKAY = "okay"
+    WARN = "warn"
+    FAIL = "fail"
+    SKIP = "skip"
+    AUTO_SKIP = "auto_skip"
 
 
 @dataclass
