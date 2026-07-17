@@ -108,21 +108,18 @@ class Phabricator(Forge):
             "differential.revision.edit",
             **data,
         )["object"]["id"]
+        revision_url = self.forge_url.copy_with(path=f"/D{revision_id}")
 
         # TODO: add a message if -m is passed
 
         # If the Change didn't have a Revision already, attach it
         if not rev:
-            jj.describe(
-                r=change_id,
-                m=(
-                    jj.description_of(change_id)
-                    + f"\n\nDifferential Revision: {self.forge_url}/D{revision_id}"
-                ),
-            )
-            print(f"Created revision {self.forge_url}/D{revision_id} for {change_id}")
+            orig_msg = jj.description_of(change_id)
+            new_msg = orig_msg + f"\n\nDifferential Revision: {revision_url}"
+            jj.describe(r=change_id, m=new_msg)
+            print(f"Created revision {revision_url} for {change_id}")
         else:
-            print(f"Updated revision {self.forge_url}/D{revision_id} for {change_id}")
+            print(f"Updated revision {revision_url} for {change_id}")
 
     def _change_to_revision(self, change_id: jj.ChangeID) -> PhRev | None:
         d = jj.description_of(change_id)
