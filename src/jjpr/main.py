@@ -29,8 +29,8 @@ def main(
     ctx: typer.Context,
     path: Path | None = typer.Option(
         None,
-        "--repo",
-        help="Path to locally checked out repo",
+        "--repository",
+        help="Path to respository to operate on",
     ),
     remote: str | None = typer.Option(
         None, "--remote", help="Which remote to work with"
