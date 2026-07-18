@@ -1,10 +1,10 @@
 import typing as t
 from dataclasses import dataclass, field
-from io import StringIO
 
 import httpx
-from rich.console import Console
 from rich.markup import escape
+
+from ..utils import text
 
 if t.TYPE_CHECKING:  # pragma: no cover
     from .base import Forge
@@ -55,10 +55,7 @@ class State:
         return t
 
     def __str__(self) -> str:
-        buffer = StringIO()
-        console = Console(file=buffer, force_terminal=True, color_system="truecolor")
-        console.print(self, end="")
-        return buffer.getvalue()
+        return text.rich_str(self)
 
 
 @dataclass
