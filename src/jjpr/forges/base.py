@@ -47,8 +47,8 @@ class Forge(ABC):
         """Download changes from the forge."""
 
     @abstractmethod
-    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
-        """List items on the forge, returning a list of CRListItem objects."""
+    def list_crs(self) -> list[cr.CodeReview]:
+        """List open CRs for this project, returning a list of CRListItem objects."""
 
     def _log(
         self, args: list[str], template: str, id_to_state: dict[str, cr.State]

@@ -123,33 +123,19 @@ def download_command(
 @app.command("list")
 def list_command(
     ctx: typer.Context,
-    all_projects: bool = typer.Option(
-        False,
-        "--all-projects",
-        help="List reviews for all projects on the forge",
-    ),
-    extra_repos: list[Path] = typer.Option(
-        [], "--extra-repo", help="List reviews for this other repo at the same time"
-    ),
 ) -> None:
     """List my open PRs/CRs/Diffs for the current project."""
     gos = t.cast(GlobalOptions, ctx.obj)
-    rs = [gos.repo]
-    for path in extra_repos:
-        rs.append(cmds.Repo(Path(path), None))
-
-    # Get all the reviews from all the forges
-    items = []
-    for r in rs:
-        with r.chdir():
-            items.extend(r.remote.list_crs(all_projects))
+    r = gos.repo
+    with r.chdir():
+        items = r.remote.list_crs()
 
     # Output the results
     if gos.format == "json":
         print(json.dumps([item.as_dict() for item in items], indent=4))
     else:
         if items:
-            cmds.display_list(items, multi=all_projects or len(rs) > 1)
+            cmds.display_list(items)
         else:
             print("No items found.")
 

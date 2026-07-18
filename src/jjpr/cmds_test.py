@@ -149,44 +149,12 @@ class TestPreCommitChange:
 
 
 class TestDisplayList:
-    def test_display_list_multi(self):
-        items = [
-            make_cr_list_item(cr_id="123", title="Fix bug"),
-            make_cr_list_item(
-                cr_id="124",
-                title="Add feature",
-                state=cr.State("In Review"),
-                blockers=[cr.Blocker(name="Needs Approval", color="yellow")],
-                extra={"Attachments": "42"},
-            ),
-        ]
-        cmds.display_list(items, multi=True)
-
     def test_display_list_empty(self):
-        cmds.display_list([], multi=False)
+        cmds.display_list([])
 
     def test_display_list_single_item(self):
         items = [make_cr_list_item(cr_id="123", title="Fix bug")]
-        cmds.display_list(items, multi=False)
-
-    def test_display_list_multi_forge_urls(self):
-        items = [
-            make_cr_list_item(
-                forge=DummyForge("https://github.com", "bob/proj1"),
-                cr_id="123",
-                title="Feature 1",
-                url=httpx.URL("https://github.com/repo/123"),
-                state=cr.State("Open", color="yellow"),
-            ),
-            make_cr_list_item(
-                forge=DummyForge("https://gerrit.example.com", "proj2"),
-                cr_id="456",
-                title="Fix 1",
-                url=httpx.URL("https://gerrit.example.com/change/456"),
-                state=cr.State("Reviewing", color="cyan"),
-            ),
-        ]
-        cmds.display_list(items, multi=True)
+        cmds.display_list(items)
 
     def test_display_list_with_extra_fields(self):
         items = [
@@ -204,4 +172,4 @@ class TestDisplayList:
                 extra={"Priority": "Low"},
             ),
         ]
-        cmds.display_list(items, multi=True)
+        cmds.display_list(items)

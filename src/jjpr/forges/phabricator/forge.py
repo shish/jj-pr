@@ -199,29 +199,23 @@ class Phabricator(Forge):
         log.info(f"Checking out Phabricator diff {identifier}")
         exec.run("arc", "patch", identifier, cap=False)
 
-    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
-        log.info(
-            f"Listing diffs for {self.remote_url} ({'*' if all_projects else self.project_id})"
-        )
+    def list_crs(self) -> list[cr.CodeReview]:
+        log.info(f"Listing diffs for {self.remote_url} ({self.project_id})")
 
         myPHID = self.client.call("user.whoami")["phid"]
-        rev_constraints = {
-            "authorPHIDs": [myPHID],
-            "statuses": [
-                "draft",
-                "needs-review",
-                "needs-revision",
-                "accepted",
-                "changes-planned",
-            ],
-        }
-        if not all_projects:
-            rev_constraints["repositoryPHIDs"] = [
-                self._callsign_to_phid(self.project_id)
-            ]
         revs = self.client.call(
             "differential.revision.search",
-            constraints=rev_constraints,
+            constraints={
+                "authorPHIDs": [myPHID],
+                "statuses": [
+                    "draft",
+                    "needs-review",
+                    "needs-revision",
+                    "accepted",
+                    "changes-planned",
+                ],
+                "repositoryPHIDs": [self._callsign_to_phid(self.project_id)],
+            },
         )["data"]
 
         return [

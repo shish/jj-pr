@@ -73,14 +73,10 @@ class Gerrit(Forge):
         exec.run("git", "fetch", self.remote, f"{current_rev}:{remote_id}")
         exec.run("git", "checkout", remote_id)
 
-    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
+    def list_crs(self) -> list[cr.CodeReview]:
         """List the user's open changes in Gerrit, showing any blockers."""
-        log.info(
-            f"Listing open changes from {self.forge_url} ({'*' if all_projects else self.project_id})"
-        )
-        query = "owner:self+status:open"
-        if not all_projects:
-            query += f"+project:{self.project_id}"
+        log.info(f"Listing open changes from {self.forge_url} ({self.project_id})")
+        query = f"owner:self+status:open+project:{self.project_id}"
         changes_response = self.client.get(
             f"changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=DETAILED_ACCOUNTS"
         ).json()

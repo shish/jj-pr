@@ -90,20 +90,15 @@ def pre_commit_change(change_id: str, pc_cmd: str | None, arc_cmd: str | None) -
             raise exc.UserError(f"pre-commit checks failed for change {change_id}")
 
 
-def display_list(items: list[cr.CodeReview], multi: bool) -> None:
+def display_list(items: list[cr.CodeReview]) -> None:
     """Display a list of code review items in a formatted table."""
     console = Console()
 
-    all_forge_urls = set(item.forge.forge_url for item in items)
     all_extra_keys = set()
     for item in items:
         all_extra_keys.update(item.extra.keys())
 
     table = Table()
-    if len(all_forge_urls) > 1:
-        table.add_column("Forge", style="blue")
-    if multi:
-        table.add_column("Project", style="blue")
     table.add_column("ID", style="blue")
     table.add_column("Title", style="green")
     table.add_column("State")
@@ -112,17 +107,11 @@ def display_list(items: list[cr.CodeReview], multi: bool) -> None:
         table.add_column(key.title(), style="magenta")
 
     for item in items:
-        row = []
-        if len(all_forge_urls) > 1:
-            row.append(item.forge)
-        if multi:
-            row.append(item.forge.project_id)
-        row.append(item.cr_id)
-        row.append(item.title)
-        row.append(item.state)
-        row.append(", ".join(b.__rich__() for b in item.blockers))
         table.add_row(
-            *row,
+            item.cr_id,
+            item.title,
+            item.state,
+            ", ".join(b.__rich__() for b in item.blockers),
             *[item.extra.get(key, "") for key in sorted(all_extra_keys)],
         )
 
