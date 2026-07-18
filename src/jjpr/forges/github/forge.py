@@ -103,6 +103,8 @@ class GitHub(Forge):
                 "list",
                 "--repo",
                 str(self.remote_url),
+                "--author",
+                "@me",
                 "--json",
                 "number,title,state,url,statusCheckRollup,isDraft,reviews",
             )
