@@ -134,9 +134,7 @@ def list_command(
 
     # Output the results
     if gos.format == "json":
-        print(
-            json.dumps(items, indent=4, default=json_default)
-        )
+        print(json.dumps(items, indent=4, default=json_default))
     else:
         if items:
             cmds.display_list(items)

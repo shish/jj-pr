@@ -79,7 +79,10 @@ def json_default(obj: t.Any) -> t.Any:
     if hasattr(obj, "asdict") and callable(obj.asdict):
         return obj.asdict()
     if hasattr(obj, "__dataclass_fields__"):
-        return {field.name: getattr(obj, field.name) for field in obj.__dataclass_fields__.values()}
+        return {
+            field.name: getattr(obj, field.name)
+            for field in obj.__dataclass_fields__.values()
+        }
     raise TypeError(
         f"Object of type {type(obj).__name__} is not JSON serializable"
     )  # pragma: no cover

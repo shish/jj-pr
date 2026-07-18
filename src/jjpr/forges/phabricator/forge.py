@@ -71,23 +71,72 @@ class Phabricator(Forge):
         message: str | None = None,
     ) -> None:
         log.info(f"Pushing {change_id}")
-        rev = self._change_to_revision(change_id)
-        if rev:
-            log.info(f"Updating revision D{rev} for {change_id}")
-        else:
-            log.info(f"Creating new revision for {change_id}")
 
-        # to-do list
+        # Revision data to send to differential.revision.edit
         data: dict[str, t.Any] = {
             "transactions": [],
         }
 
-        # Update an existing revision, if we have one
-        # (if not we'll create a new one)
+        rev = self._change_to_revision(change_id)
         if rev:
+            log.info(f"Updating revision D{rev} for {change_id}")
             data["objectIdentifier"] = self._revision_to_phid(rev)
+        else:
+            log.info(f"Creating new revision for {change_id}")
+            trs = self._parse_commit_message(change_id)
+            data["transactions"].extend(trs)
 
-        # Attach a diff
+        # Create a diff
+        diff_data = self._push_change_to_differential(change_id)
+        data["transactions"].append({"type": "update", "value": diff_data["phid"]})
+
+        # Push to staging (if configured)
+        self._push_change_to_staging(change_id, diff_data)
+
+        # Set parent diff if our parent commit contains a diff ID
+        if parent_phids := self._get_parent_phids(change_id):
+            data["transactions"].append({"type": "parents.set", "value": parent_phids})
+
+        # If --draft, set that flag
+        if draft:
+            data["transactions"].append({"type": "draft", "value": "true"})
+
+        # Create-or-update the revision
+        revision_data = self.client.call("differential.revision.edit", **data)
+        revision_id = revision_data["object"]["id"]
+        revision_url = self.forge_url.copy_with(path=f"/D{revision_id}")
+
+        # TODO: add a message if -m is passed
+
+        # Make sure the commit message contains the Differential Revision line
+        if not rev:
+            orig_msg = jj.description_of(change_id)
+            new_msg = orig_msg + f"\n\nDifferential Revision: {revision_url}"
+            jj.describe(r=change_id, m=new_msg)
+            print(f"Created revision {revision_url} for {change_id}")
+        else:
+            print(f"Updated revision {revision_url} for {change_id}")
+
+    def _parse_commit_message(self, change_id: jj.ChangeID) -> list[dict[str, t.Any]]:
+        trs = self.client.call(
+            "differential.parsecommitmessage",
+            corpus=jj.description_of(change_id),
+        )["transactions"]
+        for r in {"title", "summary", "testPlan"}:
+            for tr in trs:
+                if tr["type"] == r:
+                    break
+            else:
+                trs.append({"type": r, "value": "-"})
+        return trs
+
+    def _get_parent_phids(self, change_id: jj.ChangeID) -> list[PhID]:
+        parent_chids = jj.change_ids(f"{change_id}- & mutable()")
+        parent_revs = [self._change_to_revision(p) for p in parent_chids]
+        parent_phids = [self._revision_to_phid(p) for p in parent_revs if p is not None]
+        return parent_phids
+
+    def _push_change_to_differential(self, change_id: jj.ChangeID) -> dict[str, t.Any]:
         diff_text = jj.run("diff", "--git", "-r", change_id)
         changes = arcdiff.changes_to_conduit(arcdiff.parse_diff(diff_text))
         diff_data = self.client.call(
@@ -104,18 +153,12 @@ class Phabricator(Forge):
             unitStatus=arcdiff.UnitStatus.NONE,
             repositoryPHID=self._callsign_to_phid(self.project_id),
         )
-        data["transactions"].append({"type": "update", "value": diff_data["phid"]})
+        return diff_data
 
-        # Push to staging (if configured)
-        # repository.query is deprecated, but diffusion.repository.search
-        # doesn't return the staging URI, so...
-        # (ignore type because returning an array is correct but non-standard)
-        repo_data = self.client.call(  # type: ignore
-            "repository.query",
-            callsigns=[self.project_id],
-        )[0]
-        staging_uri = repo_data.get("staging", {}).get("uri")
-        if staging_uri:
+    def _push_change_to_staging(
+        self, change_id: jj.ChangeID, diff_data: dict[str, t.Any]
+    ) -> None:
+        if staging_uri := self._get_staging_url():
             log.info(f"Pushing {change_id} to staging at {staging_uri}")
             base_hash = jj.commit_id(f"{change_id}-")
             diff_hash = jj.commit_id(change_id)
@@ -130,49 +173,15 @@ class Phabricator(Forge):
                 cap=False,
             )
 
-        # Set parent diff if our parent commit contains a diff ID
-        parents = jj.change_ids(f"{change_id}- & mutable()")
-        parent_revs = [self._change_to_revision(p) for p in parents]
-        parent_revs = [p for p in parent_revs if p is not None]
-        parent_phids = [self._revision_to_phid(p) for p in parent_revs]
-        if parent_phids:
-            data["transactions"].append({"type": "parents.set", "value": parent_phids})
-
-        # If we're creating a new rev, populate the metadata from the commit message
-        if not rev:
-            trs = self.client.call(
-                "differential.parsecommitmessage",
-                corpus=jj.description_of(change_id),
-            )["transactions"]
-            for r in {"title", "summary", "testPlan"}:
-                for tr in trs:
-                    if tr["type"] == r:
-                        break
-                else:
-                    data["transactions"].append({"type": r, "value": "-"})
-            data["transactions"].extend(trs)
-
-        # If --draft, set that flag
-        if draft:
-            data["transactions"].append({"type": "draft", "value": "true"})
-
-        # Submit the new revision
-        revision_id = self.client.call(
-            "differential.revision.edit",
-            **data,
-        )["object"]["id"]
-        revision_url = self.forge_url.copy_with(path=f"/D{revision_id}")
-
-        # TODO: add a message if -m is passed
-
-        # If the Change didn't have a Revision already, attach it
-        if not rev:
-            orig_msg = jj.description_of(change_id)
-            new_msg = orig_msg + f"\n\nDifferential Revision: {revision_url}"
-            jj.describe(r=change_id, m=new_msg)
-            print(f"Created revision {revision_url} for {change_id}")
-        else:
-            print(f"Updated revision {revision_url} for {change_id}")
+    def _get_staging_url(self) -> str | None:
+        # repository.query is deprecated, but diffusion.repository.search
+        # doesn't return the staging URI, so...
+        # (ignore type because returning an array is correct but non-standard)
+        repo_data = self.client.call(  # type: ignore
+            "repository.query",
+            callsigns=[self.project_id],
+        )[0]
+        return repo_data.get("staging", {}).get("uri")
 
     def _change_to_revision(self, change_id: jj.ChangeID) -> PhRev | None:
         d = jj.description_of(change_id)
@@ -199,14 +208,13 @@ class Phabricator(Forge):
         log.info(f"Checking out Phabricator diff {identifier}")
         exec.run("arc", "patch", identifier, cap=False)
 
-    def list_crs(self) -> list[cr.CodeReview]:
-        log.info(f"Listing diffs for {self.remote_url} ({self.project_id})")
-
+    def _my_open_crs(self) -> list[dict[str, t.Any]]:
         myPHID = self.client.call("user.whoami")["phid"]
         revs = self.client.call(
             "differential.revision.search",
             constraints={
                 "authorPHIDs": [myPHID],
+                "repositoryPHIDs": [self._callsign_to_phid(self.project_id)],
                 "statuses": [
                     "draft",
                     "needs-review",
@@ -214,10 +222,13 @@ class Phabricator(Forge):
                     "accepted",
                     "changes-planned",
                 ],
-                "repositoryPHIDs": [self._callsign_to_phid(self.project_id)],
             },
         )["data"]
+        return revs
 
+    def list_crs(self) -> list[cr.CodeReview]:
+        log.info(f"Listing diffs for {self.remote_url} ({self.project_id})")
+        revs = self._my_open_crs()
         return [
             cr.CodeReview(
                 forge=self,
@@ -238,20 +249,7 @@ class Phabricator(Forge):
     def log(self, args: list[str]) -> str:
         # fetch my open revisions and their status from Phabricator,
         # index them by revision ID
-        revs = self.client.call(
-            "differential.revision.search",
-            constraints={
-                "authorPHIDs": [self.client.call("user.whoami")["phid"]],
-                "repositoryPHIDs": [self._callsign_to_phid(self.project_id)],
-                "statuses": [
-                    "draft",
-                    "needs-review",
-                    "needs-revision",
-                    "accepted",
-                    "changes-planned",
-                ],
-            },
-        )["data"]
+        revs = self._my_open_crs()
         id_to_state = {}
         for rev in revs:
             id_to_state[f"D{rev['id']}"] = _colour_state(

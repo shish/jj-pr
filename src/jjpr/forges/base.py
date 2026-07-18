@@ -63,9 +63,10 @@ class Forge(ABC):
             *args,
         )
         log.debug(f"Updating log output with PRs: {id_to_state}")
+        # assume any change which has a PR ID, but is not in our list of open PRs, is merged
         logdata = re.sub(
             r"JJPR:([^:]*):JJPR",
-            lambda x: str(id_to_state.get(text.remove_ansi(x.group(1)), "")),
+            lambda x: str(id_to_state.get(text.remove_ansi(x.group(1)), "Merged")),
             logdata,
         )
         return logdata
