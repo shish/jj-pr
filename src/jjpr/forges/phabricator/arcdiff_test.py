@@ -82,6 +82,12 @@ class TestArcanistDiffParser:
             new_path,
         ), f"Split: {diffline}"
 
+    def test_to_conduit(self, diff_test_dir: Path):
+        diff_file = diff_test_dir / "basic-multi-hunk.udiff"
+        changes = arcdiff.changes_to_conduit(self.parse_diff(diff_file))
+        c0 = changes[0]
+        assert c0["fileType"] == 1
+
     def test_basic_binary_udiff(self, diff_test_dir: Path):
         diff_file = diff_test_dir / "basic-binary.udiff"
         changes = self.parse_diff(diff_file)

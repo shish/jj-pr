@@ -21,7 +21,7 @@ class Forge(ABC):
         self.forge_url = self.remote_url
         self.project_id = "unknown"
 
-    def asdict(self) -> dict:
+    def asdict(self) -> dict[str, str]:
         return {
             "name": self.__class__.__name__,
             "remote": self.remote,

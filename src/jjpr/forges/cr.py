@@ -1,5 +1,5 @@
 import typing as t
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from io import StringIO
 
 import httpx
@@ -72,12 +72,14 @@ class CodeReview:
     blockers: list[Blocker]
     extra: dict[str, str] = field(default_factory=dict)
 
-    def as_dict(self) -> dict:
-        return {
-            "forge": self.forge.asdict(),
-            "cr_id": self.cr_id,
-            "title": asdict(self.title),
-            "state": asdict(self.state),
-            "blockers": [str(b) for b in self.blockers],
-            "extra": {k: str(v) for k, v in self.extra.items()},
-        }
+
+def json_default(obj: t.Any) -> t.Any:
+    if isinstance(obj, httpx.URL):
+        return str(obj)
+    if hasattr(obj, "asdict") and callable(obj.asdict):
+        return obj.asdict()
+    if hasattr(obj, "__dataclass_fields__"):
+        return {field.name: getattr(obj, field.name) for field in obj.__dataclass_fields__.values()}
+    raise TypeError(
+        f"Object of type {type(obj).__name__} is not JSON serializable"
+    )  # pragma: no cover

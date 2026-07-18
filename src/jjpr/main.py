@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 
 from . import cmds, exc
+from .forges.cr import json_default
 from .utils import jj
 
 app = typer.Typer(
@@ -45,7 +46,8 @@ def main(
     format: OutputFormat = typer.Option(
         "table",
         "--format",
-        help="Output format (only works with some commands)",
+        hidden=True,
+        help="Output format (unstable, for testing only)",
     ),
 ) -> None:
     log_level = [logging.WARNING, logging.INFO, logging.DEBUG][min(verbose, 2)]
@@ -132,7 +134,9 @@ def list_command(
 
     # Output the results
     if gos.format == "json":
-        print(json.dumps([item.as_dict() for item in items], indent=4))
+        print(
+            json.dumps(items, indent=4, default=json_default)
+        )
     else:
         if items:
             cmds.display_list(items)

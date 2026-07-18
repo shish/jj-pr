@@ -1,6 +1,8 @@
 from unittest.mock import Mock
 
+from dataclasses import asdict
 import httpx
+import json
 
 from . import cr
 
@@ -50,7 +52,7 @@ class TestState:
 
 
 class TestCodeReview:
-    def test_as_dict_with_extra(self) -> None:
+    def test_asdict_with_extra(self) -> None:
         forge_mock = Mock()
         forge_mock.asdict.return_value = {"name": "github"}
 
@@ -67,6 +69,29 @@ class TestCodeReview:
             extra={"author": "alice", "branch": "feature/x"},
         )
 
-        result = code_review.as_dict()
+        result = asdict(code_review)
         assert result["extra"]["author"] == "alice"
         assert result["extra"]["branch"] == "feature/x"
+
+    def test_json(self) -> None:
+        forge_mock = Mock()
+        forge_mock.asdict.return_value = {"name": "github"}
+
+        title = cr.Title(text="Fix bug", url=httpx.URL("https://example.com/fix-bug"))
+        state = cr.State(name="Open", color=None, url=None)
+        blockers = []
+
+        code_review = cr.CodeReview(
+            forge=forge_mock,
+            cr_id="456",
+            title=title,
+            state=state,
+            blockers=blockers,
+            extra={"author": "alice", "branch": "feature/x"},
+        )
+
+        result = json.dumps(asdict(code_review), default=cr.json_default)
+        assert '"author": "alice"' in result
+        assert '"branch": "feature/x"' in result
+        assert '"https://example.com/fix-bug"' in result
+        assert '"name": "github"' in result
