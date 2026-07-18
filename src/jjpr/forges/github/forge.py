@@ -5,7 +5,7 @@ import typing as t
 
 import httpx
 
-from ...utils import exec, git, jj
+from ...utils import exec, git, jj, text
 from .. import cr
 from ..base import Forge
 
@@ -144,10 +144,22 @@ class GitHub(Forge):
         return crs
 
     def log(self, args: list[str]) -> str:
-        def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, cr.State]:
-            id_to_state: dict[str, cr.State] = {}
-            # Fetch "my open PRs and their status" from
-            # GitHub, index them by branch name
+        def _check_to_str(check: dict[str, t.Any]) -> str:
+            conclusion = check.get("conclusion")
+            if conclusion == "SUCCESS":
+                txt = "[green]✔[/green]"
+            elif conclusion == "FAILURE":
+                txt = "[red]✗[/red]"
+            elif not conclusion:
+                txt = "[yellow]…[/yellow]"
+            else:
+                txt = f"({conclusion})"
+            return f"[link={check['detailsUrl']}]{txt}[/link]"
+
+        def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
+            id_to_state: dict[str, str] = {}
+            # TODO: "all open PRs" is a poor apprixmation of "all PRs
+            # for currently visible changes"
             prs = json.loads(
                 exec.run(
                     "gh",
@@ -156,16 +168,23 @@ class GitHub(Forge):
                     "--repo",
                     str(self.remote_url),
                     "--json",
-                    "url,isDraft,reviews,headRefName",
+                    "url,isDraft,reviews,headRefName,statusCheckRollup",
                 )
             )
             for pr in prs:
-                state = _colour_state(
-                    is_draft=pr.get("isDraft", False),
-                    reviews=pr.get("reviews", []),
-                    url=httpx.URL(pr["url"]),
+                state = text.rich_str(
+                    _colour_state(
+                        is_draft=pr.get("isDraft", False),
+                        reviews=pr.get("reviews", []),
+                        url=httpx.URL(pr["url"]),
+                    ),
+                    *[
+                        _check_to_str(check)
+                        for check in pr.get("statusCheckRollup", [])
+                    ],
                 )
                 id_to_state[pr["headRefName"]] = state
+                id_to_state[pr["headRefName"] + "*"] = state
                 id_to_state[pr["headRefName"] + "@" + self.remote] = state
             return id_to_state
 
