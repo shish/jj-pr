@@ -81,33 +81,32 @@ class GitHub(Forge):
                     args.append("--draft")
                 if message:
                     args.extend(["-b", message])
-                exec.run(args)
+                exec.run(*args)
 
     def download_cr(self, identifier: str) -> None:
-        log.info(f"Checking out PR {identifier} from {self.remote_url}")
+        log.info(f"Downloading PR {identifier} from {self.remote_url}")
         exec.run(
-            [
-                "gh",
-                "pr",
-                "checkout",
-                identifier,
-                "--repo",
-                str(self.remote_url),
-            ]
+            "gh",
+            "pr",
+            "checkout",
+            identifier,
+            "--repo",
+            str(self.remote_url),
         )
 
     def list_crs(self) -> list[cr.CodeReview]:
         log.info(f"Listing PRs for {self.remote_url} ({self.project_id})")
-        cmd = [
-            "gh",
-            "pr",
-            "list",
-            "--repo",
-            str(self.remote_url),
-            "--json",
-            "number,title,state,url,statusCheckRollup,isDraft,reviews",
-        ]
-        prs = json.loads(exec.run(cmd))
+        prs = json.loads(
+            exec.run(
+                "gh",
+                "pr",
+                "list",
+                "--repo",
+                str(self.remote_url),
+                "--json",
+                "number,title,state,url,statusCheckRollup,isDraft,reviews",
+            )
+        )
         crs: list[cr.CodeReview] = []
         c2c = {
             "SUCCESS": "green",
@@ -145,16 +144,17 @@ class GitHub(Forge):
     def log(self, args: list[str]) -> str:
         # Fetch "my open PRs and their status" from
         # GitHub, index them by branch name
-        cmd = [
-            "gh",
-            "pr",
-            "list",
-            "--repo",
-            str(self.remote_url),
-            "--json",
-            "url,isDraft,reviews,headRefName",
-        ]
-        prs = json.loads(exec.run(cmd))
+        prs = json.loads(
+            exec.run(
+                "gh",
+                "pr",
+                "list",
+                "--repo",
+                str(self.remote_url),
+                "--json",
+                "url,isDraft,reviews,headRefName",
+            )
+        )
         id_to_state = {}
         for pr in prs:
             is_draft = pr.get("isDraft", False)
