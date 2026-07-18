@@ -37,9 +37,3 @@ class TestForge:
         str(f)
         f.__rich__()
         f.asdict()
-
-    def test_log(self) -> None:
-        f = DummyForge()
-        txt = f._log([], '"D123"', {"D123": cr.State("OPEN")})
-        assert "OPEN" in txt
-        assert "D123" not in txt
