@@ -144,34 +144,35 @@ class GitHub(Forge):
         return crs
 
     def log(self, args: list[str]) -> str:
-        # Fetch "my open PRs and their status" from
-        # GitHub, index them by branch name
-        prs = json.loads(
-            exec.run(
-                "gh",
-                "pr",
-                "list",
-                "--repo",
-                str(self.remote_url),
-                "--json",
-                "url,isDraft,reviews,headRefName",
+        def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, cr.State]:
+            id_to_state: dict[str, cr.State] = {}
+            # Fetch "my open PRs and their status" from
+            # GitHub, index them by branch name
+            prs = json.loads(
+                exec.run(
+                    "gh",
+                    "pr",
+                    "list",
+                    "--repo",
+                    str(self.remote_url),
+                    "--json",
+                    "url,isDraft,reviews,headRefName",
+                )
             )
-        )
-        id_to_state = {}
-        for pr in prs:
-            is_draft = pr.get("isDraft", False)
-            reviews = pr.get("reviews", [])
-            url = httpx.URL(pr["url"])
-            state = _colour_state(is_draft=is_draft, reviews=reviews, url=url)
-            id_to_state[pr["headRefName"]] = state
-            id_to_state[pr["headRefName"] + "@" + self.remote] = state
-        # call `jj log` with a custom template that includes the branch,
-        # and then search-and-replace the branch with the corresponding
-        # state from id_to_state
-        return self._log(
+            for pr in prs:
+                state = _colour_state(
+                    is_draft=pr.get("isDraft", False),
+                    reviews=pr.get("reviews", []),
+                    url=httpx.URL(pr["url"]),
+                )
+                id_to_state[pr["headRefName"]] = state
+                id_to_state[pr["headRefName"] + "@" + self.remote] = state
+            return id_to_state
+
+        return jj.log_with_annotations(
             args,
             'commit.bookmarks().join(",")',
-            id_to_state,
+            _pr_ids_to_states,
         )
 
 

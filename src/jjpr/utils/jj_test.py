@@ -212,6 +212,42 @@ class TestBookmarks:
         assert "mywork@origin" in bookmarks
 
 
+class TestLogWithAnnotations:
+    def test_log(self) -> None:
+        log_output = (
+            "@  psnykstn shish@shishnet.org 09:07:34 148e97e0 JJPR::JJPR\n"
+            "│  (empty) (no description set)\n"
+            "○  sxuvxvpr shish@shishnet.org 09:07:34 c790cc63 JJPR:D123:JJPR\n"
+            "│  yay\n"
+            "○  kpromlsy shish@shishnet.org 07:32:46 a52fe356 JJPR:D456:JJPR\n"
+            "│  update\n"
+            "◆  lltxxqkq shish@shishnet.org 00:35:10 master master@origin bf993ebb \n"
+            "│  initial import\n"
+            "~\n"
+        )
+        with mock.patch.object(jj, "log_", return_value=log_output):
+            txt = jj.log_with_annotations(
+                [],
+                "commit.pr_id()",
+                lambda pr_ids: {
+                    "D123": "Accepted",
+                    "D456": "Needs Review",
+                },
+            )
+
+        assert txt == (
+            "@  psnykstn shish@shishnet.org 09:07:34 148e97e0 \n"
+            "│  (empty) (no description set)\n"
+            "○  sxuvxvpr shish@shishnet.org 09:07:34 c790cc63 Accepted\n"
+            "│  yay\n"
+            "○  kpromlsy shish@shishnet.org 07:32:46 a52fe356 Needs Review\n"
+            "│  update\n"
+            "◆  lltxxqkq shish@shishnet.org 00:35:10 master master@origin bf993ebb \n"
+            "│  initial import\n"
+            "~\n"
+        )
+
+
 class TestWithEdit:
     def test_no_op_when_already_on_target(self, repo_with_commits: Path):
         # be on a commit

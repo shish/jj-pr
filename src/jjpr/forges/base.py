@@ -1,8 +1,7 @@
 import logging
-import re
 from abc import ABC, abstractmethod
 
-from ..utils import git, jj, text
+from ..utils import git
 from . import cr
 
 log = logging.getLogger(__name__)
@@ -49,27 +48,6 @@ class Forge(ABC):
     @abstractmethod
     def list_crs(self) -> list[cr.CodeReview]:
         """List open CRs for this project, returning a list of CRListItem objects."""
-
-    def _log(
-        self, args: list[str], template: str, id_to_state: dict[str, cr.State]
-    ) -> str:
-        """Helper to run `jj log` with an extra template for CR IDs, and then
-        replace those IDs with the current CR status"""
-        logdata = jj.log_(
-            "--color",
-            "always",
-            "--config",
-            f"template-aliases.\"format_commit_labels(commit)\"='''\"JJPR:\"++{template}++\":JJPR\"'''",
-            *args,
-        )
-        log.debug(f"Updating log output with PRs: {id_to_state}")
-        # assume any change which has a PR ID, but is not in our list of open PRs, is merged
-        logdata = re.sub(
-            r"JJPR:([^:]*):JJPR",
-            lambda x: str(id_to_state.get(text.remove_ansi(x.group(1)), "Merged")),
-            logdata,
-        )
-        return logdata
 
     @abstractmethod
     def log(self, args: list[str]) -> str:

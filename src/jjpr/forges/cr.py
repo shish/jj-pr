@@ -57,9 +57,7 @@ class State:
     def __str__(self) -> str:
         buffer = StringIO()
         console = Console(file=buffer, force_terminal=True, color_system="truecolor")
-
         console.print(self, end="")
-
         return buffer.getvalue()
 
 

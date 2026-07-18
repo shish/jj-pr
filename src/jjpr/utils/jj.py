@@ -3,9 +3,10 @@ import logging
 import shlex
 import subprocess
 import typing as t
+import re
 from contextlib import contextmanager
 
-from . import exec
+from . import exec, text
 
 
 #######################################################################
@@ -224,6 +225,46 @@ def bookmarks() -> dict[str, dict[str, t.Any]]:
             name = f"{name}@{js['remote']}"
         bs[name] = js
     return bs
+
+
+def log_with_annotations(
+    args: list[str], template: str, get_pr_states: t.Callable
+) -> str:
+    """
+    - Run `jj log` with a custom template which adds PR IDs into the output
+    - Parse a list of PR IDs from the log output
+    - Call `get_pr_states` to turn a list of PR IDs into a mapping of {PR ID: State}
+    - Replace the PR IDs in the log output with their states
+    """
+    logdata = log_(
+        "--color",
+        "always",
+        "--config",
+        f"template-aliases.\"format_commit_labels(commit)\"='''\"JJPR:\"++{template}++\":JJPR\"'''",
+        *args,
+    )
+    # remove empty annotations
+    logdata = re.sub("JJPR::JJPR", "", logdata)
+    # remove ansi escape codes from inside annotations
+    logdata = re.sub(
+        r"JJPR:([^\n]*?):JJPR",
+        lambda x: f"JJPR:{text.remove_ansi(x.group(1))}:JJPR",
+        logdata,
+    )
+    # extract all PR IDs from the annotations
+    pr_ids = re.findall(r"JJPR:([^:]*):JJPR", logdata)
+
+    # build a map of PR IDs to their states using the provided get_pr_states function
+    id_to_state = get_pr_states(pr_ids)
+
+    # replace the annotations with the corresponding states
+    return re.sub(
+        r"JJPR:([^:]*):JJPR",
+        lambda x: ", ".join(
+            str(id_to_state.get(part, "")) for part in x.group(1).split(",")
+        ),
+        logdata,
+    )
 
 
 @contextmanager
