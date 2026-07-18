@@ -38,7 +38,7 @@ class TestUpload:
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 1
-        assert js[0]["title"] == "Test commit 1"
+        assert js[0]["title"]["text"] == "Test commit 1"
 
     def test_push_one_cwd(self, clone: Path):
         (clone / "test_file.txt").write_text("Test content")
@@ -47,7 +47,7 @@ class TestUpload:
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 1
-        assert js[0]["title"] == "Test commit 1"
+        assert js[0]["title"]["text"] == "Test commit 1"
 
     def test_push_one_then_two(self, clone: Path):
         (clone / "test_file.txt").write_text("Test content")
@@ -60,8 +60,8 @@ class TestUpload:
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 2
-        assert js[0]["title"] == "Test commit 2"
-        assert js[1]["title"] == "Test commit 1"
+        assert js[0]["title"]["text"] == "Test commit 2"
+        assert js[1]["title"]["text"] == "Test commit 1"
         # todo: assert two has one as a parent
 
     def test_push_two_at_once(self, clone: Path):
@@ -75,8 +75,8 @@ class TestUpload:
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 2
-        assert js[0]["title"] == "Test commit 2"
-        assert js[1]["title"] == "Test commit 1"
+        assert js[0]["title"]["text"] == "Test commit 2"
+        assert js[1]["title"]["text"] == "Test commit 1"
         # todo: assert two has one as a parent
 
 
