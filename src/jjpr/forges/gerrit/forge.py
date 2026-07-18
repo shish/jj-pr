@@ -92,7 +92,7 @@ class Gerrit(Forge):
             crs.append(
                 cr.CodeReview(
                     forge=self,
-                    cr_id=str(change["_number"]),
+                    cr_id="c" + str(change["_number"]),
                     title=cr.Title(
                         change["subject"],
                         url=self.forge_url.join(f"/c/{change['_number']}"),

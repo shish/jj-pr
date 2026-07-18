@@ -135,7 +135,7 @@ class GitHub(Forge):
             crs.append(
                 cr.CodeReview(
                     forge=self,
-                    cr_id=str(pr["number"]),
+                    cr_id="#" + str(pr["number"]),
                     title=cr.Title(pr["title"], url=httpx.URL(pr["url"])),
                     state=_colour_state(is_draft=is_draft, reviews=reviews),
                     blockers=blockers,

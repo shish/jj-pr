@@ -232,7 +232,7 @@ class Phabricator(Forge):
         return [
             cr.CodeReview(
                 forge=self,
-                cr_id=str(rev["id"]),
+                cr_id="D" + str(rev["id"]),
                 title=cr.Title(
                     text=rev["fields"]["title"],
                     url=httpx.URL(rev["fields"]["uri"]),
