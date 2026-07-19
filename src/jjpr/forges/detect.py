@@ -3,6 +3,7 @@ import logging
 from .. import exc
 from ..utils import git, jj
 from .base import Forge
+from .demo.forge import Demo
 from .gerrit.forge import Gerrit
 from .github.forge import GitHub
 from .phabricator.forge import Phabricator
@@ -15,7 +16,7 @@ def _get_forge_from_config() -> str | None:
 
 
 def _get_forge_from_remote_name(remote: str) -> str | None:
-    if remote in {"github", "phabricator", "gerrit"}:
+    if remote in {"github", "phabricator", "gerrit", "demo"}:
         return remote
     return None
 
@@ -45,8 +46,10 @@ def get_forge(remote: str) -> Forge:
         return Phabricator(remote)
     elif forge == "gerrit":
         return Gerrit(remote)
+    elif forge == "demo":
+        return Demo(remote)
     else:
         raise exc.UserError(
             "Could not detect forge from remote URL. "
-            "Please use `jj config set --repo pr.forge {github,phabricator,gerrit}`."
+            "Please use `jj config set --repo pr.forge {github,phabricator,gerrit,demo}`."
         )

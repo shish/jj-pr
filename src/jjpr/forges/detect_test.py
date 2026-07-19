@@ -25,6 +25,10 @@ class TestGetForgeFromConfig:
         run_cmd("jj", "config", "set", "--repo", "pr.forge", "gerrit")
         assert detect._get_forge_from_config() == "gerrit"
 
+    def test_detect_demo(self, tmp_repo: Path):
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "demo")
+        assert detect._get_forge_from_config() == "demo"
+
     def test_detect_no_config(self, tmp_repo: Path):
         assert detect._get_forge_from_config() is None
 
@@ -38,6 +42,9 @@ class TestGetForgeFromRemoteName:
 
     def test_detect_gerrit(self):
         assert detect._get_forge_from_remote_name("gerrit") == "gerrit"
+
+    def test_detect_demo(self):
+        assert detect._get_forge_from_remote_name("demo") == "demo"
 
     def test_detect_unknown_remote(self):
         assert detect._get_forge_from_remote_name("unknown") is None
@@ -87,6 +94,12 @@ class TestGetForge:
         f = detect.get_forge("origin")
         assert f is not None
         assert f.__class__.__name__ == "Gerrit"
+
+    def test_detect_demo(self, tmp_repo: Path):
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "demo")
+        f = detect.get_forge("origin")
+        assert f is not None
+        assert f.__class__.__name__ == "Demo"
 
     def test_detect_unknown_forge(self, tmp_repo: Path):
         run_cmd("git", "remote", "set-url", "origin", "https://unknown.com/foo/bar")
