@@ -54,6 +54,10 @@ def bookmark_create(name: str, r: RevSet) -> None:
     run("bookmark", "create", name, "-r", r, cap=False)
 
 
+def commit(m: str) -> None:
+    run("commit", "-m", m, cap=False)
+
+
 def config_get(key: str) -> str | None:
     try:
         return run("config", "get", key, cap=True)
@@ -63,6 +67,10 @@ def config_get(key: str) -> str | None:
 
 def describe(r: ChangeID, m: str) -> None:
     run("describe", "-r", r, "-m", m)
+
+
+def edit(r: RevSet) -> None:
+    run("edit", "-r", r, cap=False)
 
 
 def gerrit_upload(
@@ -91,6 +99,10 @@ def git_push(remote: str, bookmark: str) -> None:
 
 def log_(*args) -> str:
     return run("log", *args, cap=True)
+
+
+def new(r: RevSet) -> None:
+    run("new", "-r", r, cap=False)
 
 
 def rebase(d: RevSet, r: RevSet) -> None:

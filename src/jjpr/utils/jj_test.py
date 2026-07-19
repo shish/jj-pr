@@ -38,6 +38,24 @@ class TestDirectMappings:
         bookmarks_after_advance = jj.bookmarks()
         assert bookmark_name in bookmarks_after_advance
 
+    def test_commit(self, repo_with_commits: Path):
+        with mock.patch("jjpr.utils.jj.run") as mock_run:
+            jj.commit("my message")
+            mock_run.assert_called_once_with(
+                "commit", "-m", "my message", cap=False
+            )
+
+    def test_edit(self, repo_with_commits: Path):
+        stack = jj.checkable_stack()
+        target = stack[0]
+        jj.edit(target)
+        assert jj.change_id("@") == target
+
+    def test_new(self, repo_with_commits: Path):
+        parent = jj.change_id("@")
+        jj.new("@")
+        assert jj.parents_of(jj.change_id("@")) == {parent}
+
     def test_config_get(self, repo_with_commits: Path):
         # Set a config value
         jj.run("config", "set", "--repo", "test.key", "test_value")
