@@ -5,6 +5,7 @@ import shutil
 import string
 import typing as t
 from pathlib import Path
+import logging
 
 import httpx
 import pytest
@@ -13,6 +14,9 @@ import tenacity as tc
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import netrc
 from .client import PhabricatorClient
+
+
+log = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope="class")
@@ -62,16 +66,22 @@ def session(
 def repo(
     url: httpx.URL,
     session: PhabricatorClient,
+    request: pytest.FixtureRequest,
 ) -> t.Generator[httpx.URL, None, None]:
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
     repo_name = f"ztst-phab-{rand}"
+    callsign = f"ZTST{rand.upper()}"
+
+    # Call the Phabricator API to create the metadata for
+    # a new repository (but the actual repo is created by
+    # a cronjob a minute or two later)
     try:
         session.call(
             "diffusion.repository.edit",
             transactions=[
                 {"type": "name", "value": repo_name},
                 {"type": "vcs", "value": "git"},
-                {"type": "callsign", "value": f"ZTST{rand.upper()}"},
+                {"type": "callsign", "value": callsign},
                 {"type": "status", "value": "active"},
                 {"type": "shortName", "value": repo_name},
             ],
@@ -79,13 +89,27 @@ def repo(
     except Exception as e:
         pytest.skip(f"Phabricator repo creation error: {url}: {e}")
 
+    # Force the repository to be created immediately
     try:
-        callsign = f"ZTST{rand.upper()}"
+        original_dir = request.config.invocation_params.dir
+        # fmt: off
+        run_cmd(
+            "docker", "compose", "-f", str(original_dir / "compose.yml"),
+            "exec", "phabricator",
+            "runuser", "-u", "www-data",
+            "bin/repository", "update", callsign,
+        )
+        # fmt: on
+    except Exception as e:
+        pytest.skip(f"Phabricator repo update error: {url}: {e}")
+
+    try:
         repo_url = url.join(f"/source/{repo_name}.git")
-        # jj can't tell which branch is trunk() if we clone a totally bare repo,
-        # and arc gets confused if .arcconfig is missing, so let's pre-populate
-        # those as part of the repo creation process.
         with tmp_cwd():
+            # Originally we waited for the repo to be created by the cronjob,
+            # now we force it via the `bin/repository update` command above,
+            # but leaving this here in case we want to test against a real
+            # server without `docker compose` access in the future.
             for attempt in tc.Retrying(
                 stop=tc.stop_after_attempt(60),
                 wait=tc.wait_fixed(2),
@@ -93,13 +117,10 @@ def repo(
             ):
                 with attempt:
                     run_cmd("git", "clone", str(repo_url), ".")
-            data = {
-                "phabricator.uri": str(url),
-                "repository.callsign": callsign,
-            }
-            Path(".arcconfig").write_text(json.dumps(data))
-            run_cmd("git", "add", ".arcconfig")
-            run_cmd("git", "commit", "-m", "Initial commit with .arcconfig")
+
+            # jj can't tell which branch is trunk() if we clone a totally bare repo,
+            # so let's pre-populate an empty commit as part of the repo creation process.
+            run_cmd("git", "commit", "-m", "Initial empty repository", "--allow-empty")
             run_cmd("git", "push")
 
         yield repo_url
