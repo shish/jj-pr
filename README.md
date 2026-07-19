@@ -98,7 +98,7 @@ open "http://gitea.localhost:8082/user/settings/applications"
 export JJPR_TEST_GITEA_API_TOKEN=...
 
 # Run tests against the above forges
-uv run pytest -v --no-cov tests/integration
+uv run pytest -v --no-cov src/jjpr/forges
 
 # Delete test environment
 docker compose down -v
