@@ -64,6 +64,7 @@ class CodeReview:
     cr_id: str
     title: Title
     state: State
+    checks: list[Blocker]
     blockers: list[Blocker]
     extra: dict[str, str] = field(default_factory=dict)
 

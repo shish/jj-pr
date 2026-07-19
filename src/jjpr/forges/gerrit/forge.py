@@ -1,9 +1,10 @@
 import logging
 import re
+import typing as t
 
 import httpx
 
-from ...utils import exec, git, jj
+from ...utils import exec, git, jj, text
 from .. import cr
 from ..base import Forge
 from .client import GerritClient
@@ -73,6 +74,22 @@ class Gerrit(Forge):
         exec.run("git", "fetch", self.remote, f"{current_rev}:{remote_id}")
         exec.run("git", "checkout", remote_id)
 
+    def _get_checks(self, change_number: int) -> list[dict[str, t.Any]]:
+        """Fetch CI check statuses for a change via the Gerrit checks plugin.
+
+        Returns an empty list if the checks plugin isn't installed on this
+        Gerrit instance.
+        """
+        try:
+            response = self.client.get(
+                f"changes/{change_number}/revisions/current/checks?o=CHECKER"
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return []
+            raise
+        return response.json()
+
     def list_crs(self) -> list[cr.CodeReview]:
         """List the user's open changes in Gerrit, showing any blockers."""
         log.info(f"Listing open changes from {self.forge_url} ({self.project_id})")
@@ -83,6 +100,17 @@ class Gerrit(Forge):
 
         crs: list[cr.CodeReview] = []
         for change in changes_response:
+            checks = []
+            for check in self._get_checks(change["_number"]):
+                if check.get("state") not in {"SUCCESSFUL", "NOT_RELEVANT"}:
+                    checks.append(
+                        cr.Blocker(
+                            name=check.get("checker_name", check["checker_uuid"]),
+                            color=_check_color(check.get("state")),
+                            url=httpx.URL(check["url"]) if check.get("url") else None,
+                        )
+                    )
+
             blockers = []
             for req in change.get("submit_requirements", []):
                 if req["status"] not in {"SATISFIED", "NOT_APPLICABLE"}:
@@ -103,6 +131,7 @@ class Gerrit(Forge):
                         blockers=len(blockers) > 0,
                         url=self.forge_url.join(f"/c/{change['_number']}"),
                     ),
+                    checks=checks,
                     blockers=blockers,
                 )
             )
@@ -110,8 +139,8 @@ class Gerrit(Forge):
         return crs
 
     def log(self, args: list[str]) -> str:
-        def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, cr.State]:
-            id_to_state: dict[str, cr.State] = {}
+        def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
+            id_to_state: dict[str, str] = {}
             # Fetch "my open reviews and their status" from gerrit,
             # index them by change ID
             query = f"owner:self+status:open+project:{self.project_id}"
@@ -124,11 +153,15 @@ class Gerrit(Forge):
                     if req["status"] not in {"SATISFIED", "NOT_APPLICABLE"}:
                         req_name = re.sub("[^A-Z]+", "", req["name"])
                         blockers.append(req_name)
-                id_to_state[str(change["change_id"])] = _colour_state(
+                state = _colour_state(
                     is_private=change.get("is_private", False),
                     work_in_progress=change.get("work_in_progress", False),
                     blockers=len(blockers) > 0,
                     url=self.forge_url.join(f"/c/{change['_number']}"),
+                )
+                checks = self._get_checks(change["_number"])
+                id_to_state[str(change["change_id"])] = text.rich_str(
+                    state, *[_check_to_str(check) for check in checks]
                 )
             return id_to_state
 
@@ -159,3 +192,24 @@ def _colour_state(
         color = "green"
 
     return cr.State(state, color=color, url=url)
+
+
+def _check_color(state: str | None) -> str:
+    return {
+        "SUCCESSFUL": "green",
+        "NOT_RELEVANT": "green",
+        "FAILED": "red",
+    }.get(state or "", "yellow")
+
+
+def _check_to_str(check: dict[str, t.Any]) -> str:
+    state = check.get("state")
+    if state in {"SUCCESSFUL", "NOT_RELEVANT"}:
+        txt = "[green]✔[/green]"
+    elif state == "FAILED":
+        txt = "[red]✗[/red]"
+    else:
+        txt = "[yellow]…[/yellow]"
+    if url := check.get("url"):
+        return f"[link={url}]{txt}[/link]"
+    return txt

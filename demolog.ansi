@@ -1,0 +1,15 @@
+[1m[38;5;2m@[0m  [1m[38;5;13myy[38;5;8mvopuym[39m [38;5;3mshish[39m [38;5;14m14:40:41[39m [38;5;12m7[38;5;8m18102c3[39m ]8;id=14266744;https://github.com/shish/jj-pr/pull/15\[33mNeeds Review[0m]8;;\ ]8;id=14266746;https://github.com/shish/jj-pr/actions/runs/29685222866/job/88188244876\[32m✔[0m]8;;\ ]8;id=14266748;https://github.com/shish/jj-pr/actions/runs/29685222866/job/88188244892\[32m✔[0m]8;;\ ]8;id=14266750;https://github.com/shish/jj-pr/actions/runs/29685222866/job/88188244916\[32m✔[0m]8;;\ ]8;id=14266752;https://github.com/shish/jj-pr/actions/runs/29685222866/job/88188244875\[32m✔[0m]8;;\
+│  [1m[38;5;8madd extra tests[39m[0m
+│
+○  [1m[38;5;5mzu[0m[38;5;8mvntkyu[39m [38;5;3mshish[39m [38;5;6m12:26:52[39m [1m[38;5;4m2[0m[38;5;8m7556cb7[39m ]8;id=7897306;http://phab.localhost:8081/D16\[32mAccepted[0m]8;;\
+│  speed up integration tests
+│
+│ [1m[38;5;1m×[0m  [1m[38;5;5mu[0m[38;5;8mswkoqlq[39m [38;5;3mshish[39m [38;5;6m12:26:52[39m [1m[38;5;4mf0[0m[38;5;8m7ef8ce[39m ]8;id=2131811;http://gerrit.localhost:8080/c/3\[36mDraft[0m]8;;\ 
+│ │  use graphql instead of subprocess
+│ │
+│ ○  [1m[38;5;5myx[0m[38;5;8mmrvxwl[39m [38;5;3mshish[39m [38;5;6m12:26:52[39m [1m[38;5;4m6[0m[38;5;8mef0853c[39m ]8;id=2131811;http://gerrit.localhost:8080/c/3\[36mDraft[0m]8;;\
+├─╯  add graphql client
+│
+[1m[38;5;14m◆[0m  [1m[38;5;5mqm[0m[38;5;8mowrnqu[39m [38;5;3mshish[39m [38;5;6m23:53:45[39m [38;5;5mmain[39m [1m[38;5;4m4[0m[38;5;8m3010d92[39m 
+│  Release 0.1
+~

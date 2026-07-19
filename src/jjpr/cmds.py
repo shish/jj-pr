@@ -99,10 +99,11 @@ def display_list(items: list[cr.CodeReview]) -> None:
         all_extra_keys.update(item.extra.keys())
 
     table = Table()
-    table.add_column("ID", style="blue")
+    table.add_column("ID", style="blue", min_width=4)
     table.add_column("Title", style="green")
-    table.add_column("State")
-    table.add_column("Blockers")
+    table.add_column("State", width=12)
+    table.add_column("Checks", min_width=8)
+    table.add_column("Blockers", min_width=8)
     for key in sorted(all_extra_keys):
         table.add_column(key.title(), style="magenta")
 
@@ -111,6 +112,7 @@ def display_list(items: list[cr.CodeReview]) -> None:
             item.cr_id,
             item.title,
             item.state,
+            ", ".join(b.__rich__() for b in item.checks),
             ", ".join(b.__rich__() for b in item.blockers),
             *[item.extra.get(key, "") for key in sorted(all_extra_keys)],
         )

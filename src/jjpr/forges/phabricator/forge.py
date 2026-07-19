@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 
 from ... import exc
-from ...utils import exec, git, jj
+from ...utils import exec, git, jj, text
 from .. import cr
 from ..base import Forge
 from . import arcdiff
@@ -208,6 +208,48 @@ class Phabricator(Forge):
         log.info(f"Checking out Phabricator diff {identifier}")
         exec.run("arc", "patch", identifier, cap=False)
 
+    def _get_checks(self, diff_phids: list[PhID]) -> dict[PhID, list[dict[str, t.Any]]]:
+        """Fetch Harbormaster build/check statuses for a set of diffs.
+
+        Returns a mapping of diff PHID to a list of {name, status, url}
+        dicts, one per Harbormaster build associated with that diff.
+        """
+        diff_phids = [phid for phid in diff_phids if phid]
+        if not diff_phids:
+            return {}
+
+        buildables = self.client.call(
+            "harbormaster.buildable.search",
+            constraints={"objectPHIDs": diff_phids},
+        )["data"]
+        if not buildables:
+            return {}
+
+        buildable_phid_to_diff_phid = {
+            buildable["phid"]: buildable["fields"]["objectPHID"]
+            for buildable in buildables
+        }
+        builds = self.client.call(
+            "harbormaster.build.search",
+            constraints={"buildables": list(buildable_phid_to_diff_phid)},
+        )["data"]
+
+        checks: dict[PhID, list[dict[str, t.Any]]] = {}
+        for build in builds:
+            diff_phid = buildable_phid_to_diff_phid.get(
+                build["fields"]["buildablePHID"]
+            )
+            if not diff_phid:
+                continue
+            checks.setdefault(diff_phid, []).append(
+                {
+                    "name": build["fields"]["name"],
+                    "status": build["fields"]["buildStatus"]["value"],
+                    "url": self.forge_url.join(f"/harbormaster/build/{build['id']}/"),
+                }
+            )
+        return checks
+
     def _my_open_crs(self) -> list[dict[str, t.Any]]:
         myPHID = self.client.call("user.whoami")["phid"]
         revs = self.client.call(
@@ -229,35 +271,55 @@ class Phabricator(Forge):
     def list_crs(self) -> list[cr.CodeReview]:
         log.info(f"Listing diffs for {self.remote_url} ({self.project_id})")
         revs = self._my_open_crs()
-        return [
-            cr.CodeReview(
-                forge=self,
-                cr_id="D" + str(rev["id"]),
-                title=cr.Title(
-                    text=rev["fields"]["title"],
-                    url=httpx.URL(rev["fields"]["uri"]),
-                ),
-                state=_colour_state(
-                    state=rev["fields"]["status"]["name"],
-                    url=httpx.URL(rev["fields"]["uri"]),
-                ),
-                blockers=[],
+        checks_by_diff = self._get_checks([rev["fields"]["diffPHID"] for rev in revs])
+        crs: list[cr.CodeReview] = []
+        for rev in revs:
+            checks = [
+                cr.Blocker(
+                    name=check["name"],
+                    color=_check_color(check["status"]),
+                    url=check["url"],
+                )
+                for check in checks_by_diff.get(rev["fields"]["diffPHID"], [])
+            ]
+            crs.append(
+                cr.CodeReview(
+                    forge=self,
+                    cr_id="D" + str(rev["id"]),
+                    title=cr.Title(
+                        text=rev["fields"]["title"],
+                        url=httpx.URL(rev["fields"]["uri"]),
+                    ),
+                    state=_colour_state(
+                        state=rev["fields"]["status"]["name"],
+                        url=httpx.URL(rev["fields"]["uri"]),
+                    ),
+                    checks=checks,
+                    blockers=[],
+                )
             )
-            for rev in revs
-        ]
+        return crs
 
     def log(self, args: list[str]) -> str:
-        def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, cr.State]:
-            return {
-                f"D{rev['id']}": _colour_state(
+        def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
+            revs = self.client.call(
+                "differential.revision.search",
+                constraints={"ids": [int(x[1:]) for x in pr_ids]},
+            )["data"]
+            checks_by_diff = self._get_checks(
+                [rev["fields"]["diffPHID"] for rev in revs]
+            )
+            id_to_state: dict[str, str] = {}
+            for rev in revs:
+                state = _colour_state(
                     state=rev["fields"]["status"]["name"],
                     url=httpx.URL(rev["fields"]["uri"]),
                 )
-                for rev in self.client.call(
-                    "differential.revision.search",
-                    constraints={"ids": [int(x[1:]) for x in pr_ids]},
-                )["data"]
-            }
+                checks = checks_by_diff.get(rev["fields"]["diffPHID"], [])
+                id_to_state[f"D{rev['id']}"] = text.rich_str(
+                    state, *[_check_to_str(check) for check in checks]
+                )
+            return id_to_state
 
         return jj.log_with_annotations(
             args,
@@ -281,3 +343,24 @@ def _colour_state(state: str, url: httpx.URL) -> cr.State:
         "Accepted": "green",
     }.get(state, "yellow")
     return cr.State(state, color=c, url=url)
+
+
+def _check_color(status: str) -> str:
+    return {
+        "passed": "green",
+        "failed": "red",
+        "aborted": "red",
+        "error": "red",
+        "deadlocked": "red",
+    }.get(status, "yellow")
+
+
+def _check_to_str(check: dict[str, t.Any]) -> str:
+    status = check["status"]
+    if status == "passed":
+        txt = "[green]✔[/green]"
+    elif status in {"failed", "aborted", "error", "deadlocked"}:
+        txt = "[red]✗[/red]"
+    else:
+        txt = "[yellow]…[/yellow]"
+    return f"[link={check['url']}]{txt}[/link]"

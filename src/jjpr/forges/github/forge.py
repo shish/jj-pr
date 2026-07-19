@@ -117,15 +117,13 @@ class GitHub(Forge):
         }
         for pr in prs:
             # Merge status checks into a blockers string
-            checks = pr.get("statusCheckRollup", [])
-            blockers = [
+            checks = [
                 cr.Blocker(
                     name=check["name"],
                     color=c2c.get(check["conclusion"], "normal"),
                     url=check["detailsUrl"],
                 )
-                for check in checks
-                if check.get("conclusion") != "SUCCESS"
+                for check in pr.get("statusCheckRollup", [])
             ]
 
             # Determine PR state based on draft status and reviews
@@ -138,28 +136,16 @@ class GitHub(Forge):
                     cr_id="#" + str(pr["number"]),
                     title=cr.Title(pr["title"], url=httpx.URL(pr["url"])),
                     state=_colour_state(is_draft=is_draft, reviews=reviews),
-                    blockers=blockers,
+                    checks=checks,
+                    blockers=[],
                 )
             )
         return crs
 
     def log(self, args: list[str]) -> str:
-        def _check_to_str(check: dict[str, t.Any]) -> str:
-            conclusion = check.get("conclusion")
-            if conclusion == "SUCCESS":
-                txt = "[green]✔[/green]"
-            elif conclusion == "FAILURE":
-                txt = "[red]✗[/red]"
-            elif not conclusion:
-                txt = "[yellow]…[/yellow]"
-            else:
-                txt = f"({conclusion})"
-            return f"[link={check['detailsUrl']}]{txt}[/link]"
-
         def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
             id_to_state: dict[str, str] = {}
-            # TODO: "all open PRs" is a poor apprixmation of "all PRs
-            # for currently visible changes"
+            # TODO: "all open PRs" is a poor approxmation of "The PRs listed in $pr_ids"
             prs = json.loads(
                 exec.run(
                     "gh",
@@ -179,7 +165,19 @@ class GitHub(Forge):
                         url=httpx.URL(pr["url"]),
                     ),
                     *[
-                        _check_to_str(check)
+                        cr.Blocker(
+                            name={
+                                "SUCCESS": "✔",
+                                "FAILURE": "✗",
+                                "PENDING": "…",
+                            }.get(check["conclusion"], f"<{check['conclusion']}>"),
+                            color={
+                                "SUCCESS": "green",
+                                "FAILURE": "red",
+                                "PENDING": "yellow",
+                            }.get(check["conclusion"], "normal"),
+                            url=httpx.URL(check["detailsUrl"]),
+                        )
                         for check in pr.get("statusCheckRollup", [])
                     ],
                 )

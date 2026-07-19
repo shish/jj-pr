@@ -42,6 +42,7 @@ def make_cr_list_item(
     title: str = "Test Item",
     url: httpx.URL | None = None,
     state: cr.State = cr.State("Open", color="cyan"),
+    checks: list[cr.Blocker] = [],
     blockers: list[cr.Blocker] = [],
     extra: dict[str, str] | None = None,
 ) -> cr.CodeReview:
@@ -55,6 +56,7 @@ def make_cr_list_item(
         cr_id=cr_id,
         title=cr.Title(title, url=url),
         state=state,
+        checks=checks,
         blockers=blockers,
         extra=extra,
     )

@@ -58,6 +58,7 @@ class TestCodeReview:
 
         title = cr.Title(text="Fix bug", url=None)
         state = cr.State(name="Open", color=None, url=None)
+        checks = []
         blockers = []
 
         code_review = cr.CodeReview(
@@ -65,6 +66,7 @@ class TestCodeReview:
             cr_id="456",
             title=title,
             state=state,
+            checks=checks,
             blockers=blockers,
             extra={"author": "alice", "branch": "feature/x"},
         )
@@ -79,6 +81,7 @@ class TestCodeReview:
 
         title = cr.Title(text="Fix bug", url=httpx.URL("https://example.com/fix-bug"))
         state = cr.State(name="Open", color=None, url=None)
+        checks = []
         blockers = []
 
         code_review = cr.CodeReview(
@@ -86,6 +89,7 @@ class TestCodeReview:
             cr_id="456",
             title=title,
             state=state,
+            checks=checks,
             blockers=blockers,
             extra={"author": "alice", "branch": "feature/x"},
         )
