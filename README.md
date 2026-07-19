@@ -4,9 +4,13 @@ Because I'm regularly using github, gerrit, and phabricator, and I don't like an
 
 I really just want `jj pr rebase` to bring me up to date with remote changes, and `jj pr upload` to submit my local changes for review - automatically Doing The Right Thing (eg updating existing reviews vs creating new ones), working consistently across forges.
 
-As a bonus, `jj pr list` to get a list of my open reviews, and `jj pr log` to get `jj log` output annotated with review status.
+As a bonus, `jj pr list` to get a list of my open reviews
 
-![jj pr log output showing review status](.github/log.png)
+![jj pr list output](.github/list-demo.png)
+
+And `jj pr log` to get `jj log` output annotated with review status.
+
+![jj pr log output showing review status](.github/log-demo.png)
 
 ## Stability Notice
 

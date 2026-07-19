@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 from ..conftest import run_cmd
-from . import jj
+from . import jj, text
 
 log = logging.getLogger(__name__)
 
@@ -41,9 +41,7 @@ class TestDirectMappings:
     def test_commit(self, repo_with_commits: Path):
         with mock.patch("jjpr.utils.jj.run") as mock_run:
             jj.commit("my message")
-            mock_run.assert_called_once_with(
-                "commit", "-m", "my message", cap=False
-            )
+            mock_run.assert_called_once_with("commit", "-m", "my message", cap=False)
 
     def test_edit(self, repo_with_commits: Path):
         stack = jj.checkable_stack()
@@ -264,6 +262,80 @@ class TestLogWithAnnotations:
             "│  initial import\n"
             "~\n"
         )
+
+    def test_example(
+        self,
+        tmp_repo: Path,
+        request: pytest.FixtureRequest,
+    ) -> None:
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "demo")
+        run_cmd(
+            "jj", "config", "set", "--repo", "templates.log", "builtin_log_comfortable"
+        )
+        run_cmd(
+            "jj",
+            "config",
+            "set",
+            "--repo",
+            "template-aliases.'format_short_signature(signature)'",
+            "'signature.email().local()'",
+        )
+        run_cmd(
+            "jj",
+            "config",
+            "set",
+            "--repo",
+            "template-aliases.'format_timestamp(timestamp)'",
+            'timestamp.format("%H:%M:%S")',
+        )
+        run_cmd("jj", "config", "set", "--repo", "user.email", "shish@example.com")
+
+        commits = {}
+
+        def commit(message: str, state: str) -> None:
+            (tmp_repo / "file.txt").write_text(message)
+            jj.commit(m=message)
+            commits[message] = {
+                "id": jj.change_id("@"),
+                "state": text.rich_str(state),
+            }
+
+        (tmp_repo / "file.txt").write_text("bah")
+        jj.commit(m="Release 0.1")
+        jj.bookmark_advance("main", "@-")
+        jj.git_push("origin", "main")
+
+        tick = "[green][link=http://demo]✔[/link][/green]"
+        cross = "[red][link=http://demo]✗ (formatting)[/link][/red]"
+        dot = "[yellow][link=http://demo]…[/link][/yellow]"
+        accepted = "[green][link=http://demo]Accepted[/link][/green]"
+        review = "[yellow][link=http://demo]Needs Review[/link][/yellow]"
+        # changes = "[red][link=http://demo]Needs Changes[/link][/red]"
+        draft = "[cyan][link=http://demo]Changes Planned[/link][/cyan]"
+
+        base = jj.change_id("@-")
+        commit("Add GraphQL client", f"{accepted} {tick} {tick} {tick}")
+        commit("Use GraphQL instead of subprocess", f"{review} {tick} {dot} {tick}")
+
+        jj.new(base)
+        commit("Speed up integration tests", f"{accepted} {cross} {tick} {tick}")
+        commit("Add more test coverage", f"{draft} {dot} {tick} {tick}")
+
+        jj.edit("@-")
+        data = jj.log_with_annotations(
+            [],
+            "commit.description().first_line()",
+            lambda pr_ids: {
+                pr_id: commits.get(pr_id, {}).get("state", "") for pr_id in pr_ids
+            },
+        )
+
+        p = request.config.invocation_params.dir / ".github" / "log-demo.ansi"
+        if not p.exists():
+            lines = data.splitlines()
+            lines = [f"  {line}" for line in lines]
+            data = "\n".join(lines)
+            p.write_text(f"\n{data}\n\n")
 
 
 class TestWithEdit:
