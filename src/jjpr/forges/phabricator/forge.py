@@ -341,6 +341,8 @@ def _colour_state(state: str, url: httpx.URL) -> cr.State:
         "Rejected": "red",
         "Needs Review": "yellow",
         "Accepted": "green",
+        "Closed": "grey",
+        "Abandoned": "grey",
     }.get(state, "yellow")
     return cr.State(state, color=c, url=url)
 
