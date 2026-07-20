@@ -54,7 +54,14 @@ class PhabricatorClient:
                 "__conduit__": True,
             },
         )
-        log.debug(f"API call: {method}({json.dumps(kwargs)})\n  -> {response.text}")
+        # fmt: off
+        log.debug(
+            f"API call:\n"
+            f"  == {method}\n"
+            f"  <- {json.dumps(kwargs)}\n"
+            f"  -> {response.text}"
+        )
+        # fmt: on
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as e:

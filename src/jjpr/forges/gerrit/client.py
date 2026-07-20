@@ -35,7 +35,8 @@ class GerritClient(httpx.Client):
         response = super().request(*args, **kwargs)
         request = response.request
         log.debug(
-            f"API call: {request.method} {request.url.path} = {response.status_code}\n"
+            f"API call:\n"
+            f"  == {request.method} {request.url.path} = {response.status_code}\n"
             f"  <- {json.dumps(dict(request.url.params))}\n"
             f"  -> " + response.text.lstrip(")]}':\n")
         )
