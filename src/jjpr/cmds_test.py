@@ -22,7 +22,11 @@ class DummyForge(Forge):
         return f"[link={self.forge_url}]DummyForge[/link]"
 
     def upload_cr(
-        self, ref: str | None, draft: bool = False, message: str | None = None
+        self,
+        ref: str | None,
+        draft: bool = False,
+        message: str | None = None,
+        pre_commit: bool = True,
     ) -> None:
         pass
 
@@ -73,46 +77,6 @@ class TestRepo:
                 assert os.getcwd() == str(tmp_repo)
 
 
-class TestGetPcCommand:
-    def test_no_hook_configured(self):
-        with tmp_cwd():
-            result = cmds._get_pc_command()
-            assert result is None
-
-    def test_hook_exists(self):
-        with tmp_cwd():
-            p = Path(".git/hooks/pre-commit")
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.touch()
-            assert cmds._get_pc_command() == ".git/hooks/pre-commit"
-
-
-class TestGetArcCommand:
-    def test_no_arclint_configured(self):
-        """Test _get_arc_command when no .arclint file is found."""
-        with tmp_cwd():
-            result = cmds._get_arc_command()
-            assert result is None
-
-    def test_arclint_exists_arc_available(self):
-        """Test _get_arc_command when .arclint exists and arc is available."""
-        with tmp_cwd():
-            Path(".arclint").touch()
-
-            with mock.patch("shutil.which", return_value="/usr/bin/arc"):
-                result = cmds._get_arc_command()
-                assert result == "/usr/bin/arc"
-
-    def test_arclint_exists_no_arc_binary(self):
-        """Test _get_arc_command when .arclint exists but arc binary not found."""
-        with tmp_cwd():
-            Path(".arclint").touch()
-
-            with mock.patch("shutil.which", return_value=None):
-                result = cmds._get_arc_command()
-                assert result is None
-
-
 class TestPreCommitStack:
     def test_no_hooks_configured(self, tmp_repo: Path):
         # Should not raise and should return early
@@ -129,25 +93,14 @@ class TestPreCommitStack:
             cmds.pre_commit_stack(None)
             assert pcc.called
 
-    def test_with_arc_hook(self, repo_with_commits: Path):
-        # Create .arclint
-        Path(".arclint").touch()
-
-        # Mock shutil.which and exec.run
-        with mock.patch("shutil.which") as mock_which:
-            with mock.patch("jjpr.cmds.pre_commit_change") as pcc:
-                mock_which.return_value = "/usr/bin/arc"
-                cmds.pre_commit_stack(None)
-                assert pcc.called
-
 
 class TestPreCommitChange:
     def test_pre_commit_change_ok(self, repo_with_commits: Path):
-        cmds.pre_commit_change("@-", "echo", "echo")
+        cmds.pre_commit_change("@-", "true")
 
     def test_pre_commit_change_fail(self, repo_with_commits: Path):
         with pytest.raises(Exception):
-            cmds.pre_commit_change("@-", "true", "false")
+            cmds.pre_commit_change("@-", "false")
 
 
 class TestDisplayList:

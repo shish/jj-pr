@@ -91,7 +91,7 @@ def upload_command(
     with r.chdir():
         if pre_commit:
             cmds.pre_commit_stack(ref)
-        r.remote.upload_cr(ref, draft=draft, message=message)
+        r.remote.upload_cr(ref, draft=draft, message=message, pre_commit=pre_commit)
 
 
 @app.command("rebase")

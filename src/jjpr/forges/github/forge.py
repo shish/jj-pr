@@ -35,6 +35,7 @@ class GitHub(Forge):
         ref: str | None,
         draft: bool = False,
         message: str | None = None,
+        pre_commit: bool = True,
     ) -> None:
         changes = jj.change_id(ref) if ref else jj.pushable_stack()
 

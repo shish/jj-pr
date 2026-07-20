@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from . import arcdiff
-from .arcdiff import ChangeType, FileType
+from . import diff
+from .diff import ChangeType, FileType
 
 
 EXPECTED_GIT_COMMIT_MESSAGE = (
@@ -46,14 +46,14 @@ EXPECTED_GIT_COMMIT_MESSAGE = (
 class TestArcanistDiffParser:
     @pytest.fixture
     def diff_test_dir(self) -> Path:
-        return Path(__file__).parent / "arcdiff_test"
+        return Path(__file__).parent / "diff_test"
 
     def parse_diff(self, diff_file: Path) -> list:
         contents = diff_file.read_text()
-        return arcdiff.parse_diff(contents)
+        return diff.parse_diff(contents)
 
     def parse_diff_text(self, diff_text: str) -> list:
-        return arcdiff.parse_diff(diff_text)
+        return diff.parse_diff(diff_text)
 
     def run_single_rename(
         self,
@@ -84,7 +84,7 @@ class TestArcanistDiffParser:
 
     def test_to_conduit(self, diff_test_dir: Path):
         diff_file = diff_test_dir / "basic-multi-hunk.udiff"
-        changes = arcdiff.changes_to_conduit(self.parse_diff(diff_file))
+        changes = diff.changes_to_conduit(self.parse_diff(diff_file))
         c0 = changes[0]
         assert c0["fileType"] == 1
 
@@ -482,7 +482,7 @@ class TestArcanistDiffParser:
         ]
 
         for input_text, expected in tests:
-            result = arcdiff.extract_git_common_filename(input_text)
+            result = diff.extract_git_common_filename(input_text)
             assert result == expected, f"Split: {input_text}"
 
     def test_git_renames(self):

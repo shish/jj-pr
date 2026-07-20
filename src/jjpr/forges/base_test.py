@@ -20,6 +20,7 @@ class DummyForge(base.Forge):
         ref: str | None,
         draft: bool = False,
         message: str | None = None,
+        pre_commit: bool = True,
     ) -> None: ...
 
     def download_cr(self, identifier: str) -> None: ...

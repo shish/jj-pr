@@ -37,6 +37,7 @@ class Gerrit(Forge):
         ref: str | None,
         draft: bool = False,
         message: str | None = None,
+        pre_commit: bool = True,
     ) -> None:
         if ref:
             change_id = jj.change_id(ref)

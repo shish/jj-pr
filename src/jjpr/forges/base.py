@@ -38,6 +38,7 @@ class Forge(ABC):
         ref: str | None,
         draft: bool = False,
         message: str | None = None,
+        pre_commit: bool = True,
     ) -> None:
         """Upload changes to the forge."""
 

@@ -11,7 +11,7 @@ from ... import exc
 from ...utils import exec, git, jj, text
 from .. import cr
 from ..base import Forge
-from . import arcdiff
+from . import arc
 from .client import PhabricatorClient
 
 log = logging.getLogger(__name__)
@@ -53,22 +53,29 @@ class Phabricator(Forge):
             f"Phabricator settings:\n  forge_url: {self.forge_url}\n  project_id: {self.project_id}\n  merge_target: {self.merge_target}"
         )
 
+    ###################################################################
+    # Upload
+
     def upload_cr(
         self,
         ref: str | None,
         draft: bool = False,
         message: str | None = None,
+        pre_commit: bool = True,
     ) -> None:
         changes = jj.change_id(ref) if ref else jj.pushable_stack()
         log.info(f"Pushing {ref} ({changes})")
         for change_id in changes:
-            self._push_one(change_id, draft=draft, message=message)
+            self._push_one(
+                change_id, draft=draft, message=message, pre_commit=pre_commit
+            )
 
     def _push_one(
         self,
         change_id: str,
         draft: bool = False,
         message: str | None = None,
+        pre_commit: bool = False,
     ) -> None:
         log.info(f"Pushing {change_id}")
 
@@ -87,7 +94,7 @@ class Phabricator(Forge):
             data["transactions"].extend(trs)
 
         # Create a diff
-        diff_data = self._push_change_to_differential(change_id)
+        diff_data = self._push_change_to_differential(change_id, pre_commit)
         data["transactions"].append({"type": "update", "value": diff_data["phid"]})
 
         # Push to staging (if configured)
@@ -136,9 +143,18 @@ class Phabricator(Forge):
         parent_phids = [self._revision_to_phid(p) for p in parent_revs if p is not None]
         return parent_phids
 
-    def _push_change_to_differential(self, change_id: jj.ChangeID) -> dict[str, t.Any]:
+    def _push_change_to_differential(
+        self,
+        change_id: jj.ChangeID,
+        pre_commit: bool = True,
+    ) -> dict[str, t.Any]:
+        # Run pre-commit hooks if requested
+        with jj.with_edit(change_id):
+            lint_info = arc.lint.lint_current_diff(pre_commit)
+            unit_info = arc.unit.unit_current_diff(pre_commit)
+
         diff_text = jj.run("diff", "--git", "-r", change_id)
-        changes = arcdiff.changes_to_conduit(arcdiff.parse_diff(diff_text))
+        changes = arc.diff.changes_to_conduit(arc.diff.parse_diff(diff_text))
         diff_data = self.client.call(
             "differential.creatediff",
             changes=changes,
@@ -149,9 +165,31 @@ class Phabricator(Forge):
             sourceControlPath="/",
             sourceControlBaseRevision=jj.commit_id(f"{change_id}-"),
             creationMethod="jjpr",
-            lintStatus=arcdiff.LintStatus.NONE,
-            unitStatus=arcdiff.UnitStatus.NONE,
+            lintStatus=lint_info[0],
+            unitStatus=unit_info[0],
             repositoryPHID=self._callsign_to_phid(self.project_id),
+        )
+        self.client.call(
+            "differential.setdiffproperty",
+            diff_id=diff_data["diffid"],
+            name="arc:lint",
+            data=json.dumps(
+                {
+                    "status": lint_info[0],
+                    "messages": lint_info[1],
+                }
+            ),
+        )
+        self.client.call(
+            "differential.setdiffproperty",
+            diff_id=diff_data["diffid"],
+            name="arc:unit",
+            data=json.dumps(
+                {
+                    "status": unit_info[0],
+                    "messages": unit_info[1],
+                }
+            ),
         )
         return diff_data
 
@@ -204,9 +242,15 @@ class Phabricator(Forge):
             constraints={"callsigns": [callsign]},
         )["data"][0]["phid"]
 
+    ###################################################################
+    # Download
+
     def download_cr(self, identifier: str) -> None:
         log.info(f"Checking out Phabricator diff {identifier}")
         exec.run("arc", "patch", identifier, cap=False)
+
+    ###################################################################
+    # List
 
     def _get_checks(self, diff_phids: list[PhID]) -> dict[PhID, list[dict[str, t.Any]]]:
         """Fetch Harbormaster build/check statuses for a set of diffs.
@@ -299,6 +343,9 @@ class Phabricator(Forge):
                 )
             )
         return crs
+
+    ###################################################################
+    # Log
 
     def log(self, args: list[str]) -> str:
         def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:

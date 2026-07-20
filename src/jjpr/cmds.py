@@ -1,7 +1,6 @@
 import logging
 import os
 import shlex
-import shutil
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -39,30 +38,10 @@ class Repo:
             os.chdir(original_dir)
 
 
-def _get_pc_command() -> str | None:
-    pch = Path(".git/hooks/pre-commit")
-    if pch.exists():
-        return str(pch)
-    return None
-
-
-def _get_arc_command() -> str | None:
-    arc_configured = Path(".arclint").exists()
-    if not arc_configured:
-        return None
-
-    arc_bin = shutil.which("arc")
-    if arc_configured and not arc_bin:
-        log.info(".arclint found, but no arc binary")
-
-    return arc_bin
-
-
 def pre_commit_stack(ref: str | None) -> None:
     """Run pre-commit hooks on a stack of changes."""
-    pc_cmd = _get_pc_command()
-    arc_cmd = _get_arc_command()
-    if not pc_cmd and not arc_cmd:
+    pc_cmd = Path(".git/hooks/pre-commit")
+    if not pc_cmd.exists():
         log.info("No pre-commit configuration found, skipping")
         return
 
@@ -70,10 +49,10 @@ def pre_commit_stack(ref: str | None) -> None:
     for n, change_id in enumerate(changes):
         if n > 0:
             print("=" * 80)
-        pre_commit_change(change_id, pc_cmd, arc_cmd)
+        pre_commit_change(change_id, str(pc_cmd))
 
 
-def pre_commit_change(change_id: str, pc_cmd: str | None, arc_cmd: str | None) -> None:
+def pre_commit_change(change_id: str, pc_cmd: str) -> None:
     with jj.with_edit(change_id):
         files = jj.files_in(change_id)
         files = [f for f in files if Path(f).exists()]
@@ -81,11 +60,8 @@ def pre_commit_change(change_id: str, pc_cmd: str | None, arc_cmd: str | None) -
         print(f'Checking "{descr}" ({change_id})')
         print(f"Affected files: {shlex.join(files)}")
         try:
-            if arc_cmd:
-                exec.run(arc_cmd, "lint", "--apply-patches", cap=False)
             exec.run("git", "add", "--all", cap=False)
-            if pc_cmd:
-                exec.run(pc_cmd, cap=False)
+            exec.run(pc_cmd, cap=False)
         except Exception:
             raise exc.UserError(f"pre-commit checks failed for change {change_id}")
 
