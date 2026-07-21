@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from ..conftest import run_cmd
-from ..utils import netrc, exc
+from ..utils import exc, netrc
 from . import detect
 
 log = logging.getLogger(__name__)

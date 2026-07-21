@@ -10,7 +10,6 @@ import pytest
 from . import diff
 from .diff import ChangeType, FileType
 
-
 EXPECTED_GIT_COMMIT_MESSAGE = (
     "\n"
     "Deprecating UIActionButton (Part 1)\n"

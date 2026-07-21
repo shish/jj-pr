@@ -1,8 +1,8 @@
+import json
+from dataclasses import asdict
 from unittest.mock import Mock
 
-from dataclasses import asdict
 import httpx
-import json
 
 from . import cr
 

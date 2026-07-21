@@ -55,6 +55,7 @@ def run(*args: str, cap: bool = True) -> str | None:
 
 def _run_jjpr_cmd(args: list[str]) -> str:
     from typer.testing import CliRunner
+
     from .. import main
 
     runner = CliRunner()

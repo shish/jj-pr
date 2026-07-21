@@ -1,11 +1,11 @@
 import json
+import logging
 import os
 import random
 import shutil
 import string
 import typing as t
 from pathlib import Path
-import logging
 
 import httpx
 import pytest
@@ -14,7 +14,6 @@ import tenacity as tc
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import netrc
 from .client import PhabricatorClient
-
 
 log = logging.getLogger(__name__)
 

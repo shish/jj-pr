@@ -1,13 +1,12 @@
 import json
 import logging
+import re
 import shlex
 import subprocess
 import typing as t
-import re
 from contextlib import contextmanager
 
 from . import exec, text
-
 
 #######################################################################
 # Utilities

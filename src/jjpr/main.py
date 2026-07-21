@@ -8,7 +8,7 @@ import typer
 
 from . import cmds
 from .forges.cr import json_default
-from .utils import jj, exc
+from .utils import exc, jj
 
 app = typer.Typer(
     help="Unified CLI for multiple code review forges",

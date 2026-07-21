@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from ...utils import exec, git, jj, text, exc
+from ...utils import exc, exec, git, jj, text
 from .. import cr
 from ..base import Forge
 from . import arc

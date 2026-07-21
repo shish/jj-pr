@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.table import Table
 
 from .forges import cr, detect
-from .utils import exec, jj, exc
+from .utils import exc, exec, jj
 
 log = logging.getLogger(__name__)
 
