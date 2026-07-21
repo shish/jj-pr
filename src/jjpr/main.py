@@ -6,9 +6,9 @@ from pathlib import Path
 
 import typer
 
-from . import cmds, exc
+from . import cmds
 from .forges.cr import json_default
-from .utils import jj
+from .utils import jj, exc
 
 app = typer.Typer(
     help="Unified CLI for multiple code review forges",

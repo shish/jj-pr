@@ -4,8 +4,7 @@ import logging
 
 import httpx
 
-from ... import exc
-from ...utils import netrc
+from ...utils import netrc, exc
 
 log = logging.getLogger(__name__)
 

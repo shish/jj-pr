@@ -7,9 +7,8 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
-from . import exc
 from .forges import cr, detect
-from .utils import exec, jj
+from .utils import exec, jj, exc
 
 log = logging.getLogger(__name__)
 

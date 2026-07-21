@@ -4,9 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from .. import exc
 from ..conftest import run_cmd
-from ..utils import netrc
+from ..utils import netrc, exc
 from . import detect
 
 log = logging.getLogger(__name__)

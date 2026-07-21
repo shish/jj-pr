@@ -2,8 +2,7 @@ import subprocess
 
 import httpx
 
-from .. import exc
-from . import exec
+from . import exc, exec
 
 
 def get_remote_url(remote_name: str = "origin") -> httpx.URL:

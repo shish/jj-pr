@@ -1,7 +1,6 @@
 import logging
 
-from .. import exc
-from ..utils import git, jj
+from ..utils import git, jj, exc
 from .base import Forge
 from .demo.forge import Demo
 from .gerrit.forge import Gerrit

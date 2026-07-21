@@ -3,9 +3,8 @@ from unittest import mock
 
 import pytest
 
-from .. import exc
 from ..conftest import run_cmd
-from . import git
+from . import git, exc
 
 
 class TestGetMergeTarget:
