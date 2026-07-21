@@ -60,7 +60,7 @@ def commit(m: str) -> None:
 
 def config_get(key: str) -> str | None:
     try:
-        return run("config", "get", key, cap=True)
+        return run("--ignore-working-copy", "config", "get", key, cap=True)
     except JjError:
         return None
 
@@ -98,7 +98,7 @@ def git_push(remote: str, bookmark: str) -> None:
 
 
 def log_(*args) -> str:
-    return run("log", *args, cap=True)
+    return run("--ignore-working-copy", "log", *args, cap=True)
 
 
 def new(r: RevSet) -> None:
@@ -118,7 +118,7 @@ def root() -> str:
 
 
 def change_info(change_id: ChangeID, t: str) -> str:
-    return run("log", "-r", change_id, "--no-graph", "-T", t)
+    return run("--ignore-working-copy", "log", "-r", change_id, "--no-graph", "-T", t)
 
 
 def parents_of(change_id: ChangeID) -> set[ChangeID]:
