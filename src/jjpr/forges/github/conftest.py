@@ -18,6 +18,12 @@ def url() -> httpx.URL:
 
 
 @pytest.fixture(scope="class")
+def github_organization() -> str:
+    """Get the GitHub organization from the environment variable or use a default."""
+    return os.getenv("JJPR_TEST_GITHUB_ORGANIZATION", "")
+
+
+@pytest.fixture(scope="class")
 def api_url(url: httpx.URL) -> httpx.URL:
     """Get the GitHub API URL based on the GitHub URL."""
     if url.host == "github.com":
@@ -63,10 +69,11 @@ def repo(
     url: httpx.URL,
     api_url: httpx.URL,
     session: httpx.Client,
+    github_organization: str,
 ) -> t.Generator[httpx.URL, None, None]:
     """Create and cleanup a test repository on GitHub."""
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
-    repo_name = f"ztst-ghub-{rand}"
+    repo_name = f"ztst-{rand}"
 
     # Get the current username from the API
     try:
@@ -76,11 +83,16 @@ def repo(
     except Exception as e:
         pytest.skip(f"Failed to get GitHub username: {e}")
 
+    owner = github_organization or github_username
+    create_path = (
+        f"orgs/{github_organization}/repos" if github_organization else "user/repos"
+    )
+
     try:
         response = session.post(
-            api_url.join("user/repos"),
+            api_url.join(create_path),
             json={
-                "name": repo_name,
+                "name": f"{owner}/{repo_name}",
                 "description": "Test repository for jj-pr integration tests",
                 "private": True,
                 "auto_init": True,
@@ -93,9 +105,9 @@ def repo(
     # import time
     # time.sleep(60)
     try:
-        yield url.join(f"{github_username}/{repo_name}")
+        yield url.join(f"{owner}/{repo_name}")
     finally:
-        response = session.delete(api_url.join(f"repos/{github_username}/{repo_name}"))
+        response = session.delete(api_url.join(f"repos/{owner}/{repo_name}"))
         response.raise_for_status()
 
 

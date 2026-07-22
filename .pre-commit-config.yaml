@@ -14,7 +14,7 @@ repos:
         types: [python]
       - id: pytest
         name: pytest
-        entry: uv run pytest -n 4
+        entry: uv run pytest
         language: system
         pass_filenames: false
         stages: [commit]
