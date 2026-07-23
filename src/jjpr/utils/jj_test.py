@@ -118,6 +118,11 @@ class TestDirectMappings:
             mock_run.assert_called_once_with(
                 "rebase", "--skip-emptied", "-d", "trunk()", "-r", "@", cap=False
             )
+        with mock.patch("jjpr.utils.jj.run") as mock_run:
+            jj.rebase(d="trunk()", s="@")
+            mock_run.assert_called_once_with(
+                "rebase", "--skip-emptied", "-d", "trunk()", "-s", "@", cap=False
+            )
 
     def test_root(self, repo_with_commits: Path):
         assert os.getcwd() == str(jj.root())

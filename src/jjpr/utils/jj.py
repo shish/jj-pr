@@ -110,8 +110,13 @@ def new(r: RevSet) -> None:
     run("new", "-r", r, cap=False)
 
 
-def rebase(d: RevSet, r: RevSet) -> None:
-    run("rebase", "--skip-emptied", "-d", d, "-r", r, cap=False)
+def rebase(d: RevSet, r: RevSet | None = None, s: RevSet | None = None) -> None:
+    cmd = ["rebase", "--skip-emptied", "-d", d]
+    if r:
+        cmd.extend(["-r", r])
+    if s:
+        cmd.extend(["-s", s])
+    run(*cmd, cap=False)
 
 
 def root() -> str:
