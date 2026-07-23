@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 
-from ..utils import git
+from ..utils import git, jj
 from . import cr
 
 log = logging.getLogger(__name__)
@@ -45,6 +45,10 @@ class Forge(ABC):
     @abstractmethod
     def download_cr(self, identifier: str) -> None:
         """Download changes from the forge."""
+
+    @abstractmethod
+    def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
+        """Rebase a CR from the forge."""
 
     @abstractmethod
     def list_crs(self) -> list[cr.CodeReview]:

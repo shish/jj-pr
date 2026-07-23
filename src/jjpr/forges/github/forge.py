@@ -30,6 +30,8 @@ class GitHub(Forge):
                 f"Invalid GitHub remote URL format: {self.remote_url}. Expected format: owner/repo"
             )
 
+        self.default_merge_target = git.get_merge_target()
+
     def upload_cr(
         self,
         ref: str | None,
@@ -94,6 +96,13 @@ class GitHub(Forge):
             "--repo",
             str(self.remote_url),
         )
+
+    def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
+        jj.git_fetch(all_remotes=True)
+        for root in change_ids:
+            base = f"{self.default_merge_target}@{self.remote}"
+            print(f"Rebasing {root} onto {base}")
+            jj.rebase(d=base, s=root)
 
     def list_crs(self) -> list[cr.CodeReview]:
         log.info(f"Listing PRs for {self.remote_url} ({self.project_id})")

@@ -44,13 +44,18 @@ class Phabricator(Forge):
             )["data"][0]["fields"]["callsign"]
 
         if merge_target := repo_config.get("arc.land.onto.default"):
-            self.merge_target = merge_target
+            self.default_merge_target = merge_target
         else:
-            self.merge_target = git.get_merge_target()
+            self.default_merge_target = git.get_merge_target()
 
+        # fmt: off
         log.info(
-            f"Phabricator settings:\n  forge_url: {self.forge_url}\n  project_id: {self.project_id}\n  merge_target: {self.merge_target}"
+            f"Phabricator settings:\n"
+            f"  forge_url: {self.forge_url}\n"
+            f"  project_id: {self.project_id}\n"
+            f"  default_merge_target: {self.default_merge_target}"
         )
+        # fmt: on
 
     ###################################################################
     # Upload
@@ -159,7 +164,7 @@ class Phabricator(Forge):
             changes=changes,
             sourceMachine=socket.gethostname(),
             sourcePath=jj.root(),
-            branch=self.merge_target,
+            branch=self.default_merge_target,
             sourceControlSystem="git",
             sourceControlPath="/",
             sourceControlBaseRevision=jj.commit_id(f"{change_id}-"),
@@ -247,6 +252,16 @@ class Phabricator(Forge):
     def download_cr(self, identifier: str) -> None:
         log.info(f"Checking out Phabricator diff {identifier}")
         exec.run("arc", "patch", identifier, cap=False)
+
+    ###################################################################
+    # Rebase
+
+    def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
+        jj.git_fetch(all_remotes=True)
+        for root in change_ids:
+            base = f"{self.default_merge_target}@{self.remote}"
+            print(f"Rebasing {root} onto {base}")
+            jj.rebase(d=base, s=root)
 
     ###################################################################
     # List

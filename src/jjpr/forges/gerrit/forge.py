@@ -24,11 +24,14 @@ class Gerrit(Forge):
                 self.forge_url = self.remote_url.copy_with(
                     scheme="https", username=None, port=None, path=None
                 )
+
         if match := re.match(r"^/(a/)?(.*?)(\.git)?$", self.remote_url.path):
             self.project_id = match.group(2)
-        self.merge_target = (
-            jj.config_get("gerrit.default-remote-branch") or git.get_merge_target()
-        )
+
+        if drb := jj.config_get("gerrit.default-remote-branch"):
+            self.default_merge_target = drb
+        else:
+            self.default_merge_target = git.get_merge_target()
 
         self.client = GerritClient(self.forge_url)
 
@@ -49,7 +52,7 @@ class Gerrit(Forge):
             r=range,
             wip=draft,
             message=message,
-            remote_branch=self.merge_target,
+            remote_branch=self.default_merge_target,
         )
 
     def download_cr(self, identifier: str) -> None:
@@ -74,6 +77,13 @@ class Gerrit(Forge):
         remote_id = f"refs/remotes/{self.remote}/change-{identifier}"
         exec.run("git", "fetch", self.remote, f"{current_rev}:{remote_id}")
         exec.run("git", "checkout", remote_id)
+
+    def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
+        jj.git_fetch(all_remotes=True)
+        for root in change_ids:
+            base = f"{self.default_merge_target}@{self.remote}"
+            print(f"Rebasing {root} onto {base}")
+            jj.rebase(d=base, s=root)
 
     def _get_checks(self, change_number: int) -> list[dict[str, t.Any]]:
         """Fetch CI check statuses for a change via the Gerrit checks plugin.

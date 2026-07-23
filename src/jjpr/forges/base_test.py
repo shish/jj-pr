@@ -25,6 +25,8 @@ class DummyForge(base.Forge):
 
     def download_cr(self, identifier: str) -> None: ...
 
+    def rebase_crs(self, change_ids: list[str]) -> None: ...
+
     def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
         return []
 

@@ -7,12 +7,12 @@ from .forge import GitHub
 
 class TestMeta:
     def test_meta(self, tmp_home: Path, tmp_repo: Path):
-        r = "git@github.com:example/repo.git"
+        r = "git@github.com:shish/jj-pr.git"
         run_cmd("git", "remote", "set-url", "origin", r)
         f = GitHub("origin")
-        assert f.remote_url == "ssh://git@github.com/example/repo.git"
+        assert f.remote_url == "ssh://git@github.com/shish/jj-pr.git"
         assert f.forge_url == "https://github.com"
-        assert f.project_id == "example/repo"
+        assert f.project_id == "shish/jj-pr"
 
 
 class TestUpload:

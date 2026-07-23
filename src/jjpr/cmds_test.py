@@ -9,39 +9,11 @@ from . import cmds
 from .conftest import run_cmd, tmp_cwd
 from .forges import cr
 from .forges.base import Forge
-
-
-class DummyForge(Forge):
-    def __init__(
-        self, url: str = "https://test.example.com", project_id: str = "bob/test-repo"
-    ):
-        self.forge_url = httpx.URL(url)
-        self.project_id = project_id
-
-    def __rich__(self) -> str:
-        return f"[link={self.forge_url}]DummyForge[/link]"
-
-    def upload_cr(
-        self,
-        ref: str | None,
-        draft: bool = False,
-        message: str | None = None,
-        pre_commit: bool = True,
-    ) -> None:
-        pass
-
-    def download_cr(self, identifier: str) -> None:
-        pass
-
-    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
-        return []
-
-    def log(self, args: list[str]) -> str:
-        return "dummy log output"
+from .forges.demo.forge import Demo
 
 
 def make_cr_list_item(
-    forge: Forge = DummyForge(),
+    forge: Forge = Demo("origin"),
     cr_id: str = "123",
     title: str = "Test Item",
     url: httpx.URL | None = None,
@@ -68,7 +40,7 @@ def make_cr_list_item(
 
 class TestRepo:
     def test_init(self, tmp_repo: Path):
-        run_cmd("git", "remote", "set-url", "origin", "https://github.com/foo/bar")
+        run_cmd("git", "remote", "set-url", "origin", "https://github.com/shish/jj-pr")
         r = cmds.Repo(tmp_repo, None)
         assert r.path == tmp_repo
         with tmp_cwd() as _:

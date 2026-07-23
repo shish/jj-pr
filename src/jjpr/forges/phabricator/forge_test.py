@@ -27,7 +27,7 @@ class TestMeta:
         assert f.remote_url == r
         assert f.forge_url == "https://phab.mycorp.com"
         assert f.project_id == "TESTREPO"
-        assert f.merge_target == "main"
+        assert f.default_merge_target == "main"
 
 
 class TestUpload:

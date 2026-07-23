@@ -29,6 +29,13 @@ class TestDownload:
         run_cmd("jj", "pr", "download", "123")
 
 
+class TestRebase:
+    def test_rebase_is_a_noop(self, tmp_repo: Path):
+        run_cmd("jj", "config", "set", "--repo", "pr.forge", "demo")
+        # Should not raise, regardless of the identifier passed in.
+        run_cmd("jj", "pr", "rebase")
+
+
 class TestList:
     def test_list_returns_demo_data(self, tmp_repo: Path):
         run_cmd("jj", "config", "set", "--repo", "pr.forge", "demo")

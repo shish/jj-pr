@@ -77,6 +77,9 @@ class Demo(Forge):
     def download_cr(self, identifier: str) -> None:
         pass
 
+    def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
+        pass
+
     def list_crs(self) -> list[cr.CodeReview]:
         return [
             cr.CodeReview(

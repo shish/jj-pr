@@ -103,12 +103,20 @@ def rebase_command(
         "-a",
         help="Rebase all local branches; if not set, only rebase the current branch",
     ),
+    revset: str | None = typer.Argument(None, help="Revset to rebase"),
 ) -> None:
     """Pull from remote and rebase current stack."""
     r = t.cast(GlobalOptions, ctx.obj).repo
+    if all:
+        revset = "mutable()"
+    elif revset:
+        revset = revset
+    else:
+        revset = "@"
     with r.chdir():
-        jj.git_fetch(all_remotes=True)
-        jj.rebase(d="trunk()", r="mutable()" if all else "trunk()..@")
+        roots = jj.change_ids(f"roots(mutable()::{revset})")
+        log.info(f"Rebasing revset: {revset} ({roots})")
+        r.remote.rebase_crs(roots)
 
 
 @app.command("download")
