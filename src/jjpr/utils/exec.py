@@ -60,7 +60,7 @@ def _run_jjpr_cmd(args: list[str]) -> str:
 
     runner = CliRunner()
     result = runner.invoke(main.app, args)
-    if result.exit_code != 0:
+    if result.exit_code != 0:  # pragma: no cover
         raise subprocess.CalledProcessError(
             returncode=result.exit_code,
             cmd=["jj", "pr"] + list(args),

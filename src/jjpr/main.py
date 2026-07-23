@@ -107,7 +107,7 @@ def rebase_command(
     """Pull from remote and rebase current stack."""
     r = t.cast(GlobalOptions, ctx.obj).repo
     with r.chdir():
-        jj.git_fetch(remote=r.remote.remote)
+        jj.git_fetch(all_remotes=True)
         jj.rebase(d="trunk()", r="mutable()" if all else "trunk()..@")
 
 

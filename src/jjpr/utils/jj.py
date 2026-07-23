@@ -88,8 +88,14 @@ def gerrit_upload(
     run(*args, cap=False)
 
 
-def git_fetch(remote: str) -> None:
-    run("git", "fetch", "--remote", remote, cap=False)
+def git_fetch(remote: str | None = None, all_remotes: bool = False) -> None:
+    cmd = ["git", "fetch"]
+    if remote:
+        cmd.append("--remote")
+        cmd.append(remote)
+    if all_remotes:
+        cmd.append("--all-remotes")
+    run(*cmd, cap=False)
 
 
 def git_push(remote: str, bookmark: str) -> None:

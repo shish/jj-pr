@@ -96,6 +96,9 @@ class TestDirectMappings:
             mock_run.assert_called_once_with(
                 "git", "fetch", "--remote", "origin", cap=False
             )
+        with mock.patch("jjpr.utils.jj.run") as mock_run:
+            jj.git_fetch(all_remotes=True)
+            mock_run.assert_called_once_with("git", "fetch", "--all-remotes", cap=False)
 
     def test_git_push(self, repo_with_commits: Path):
         with mock.patch("jjpr.utils.jj.run") as mock_run:
