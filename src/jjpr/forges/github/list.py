@@ -1,31 +1,63 @@
-import json
 import logging
+import typing as t
 
 import httpx
 
-from ...utils import cr, exec
+from ...utils import cr
+from ._client import GitHubClient
 from ._info import get_forge_info
-from ._util import colour_state
+from . import _util
 
 log = logging.getLogger(__name__)
+
+_QUERY = f"""
+  query PullRequestSearch($q: String!, $limit: Int!, $endCursor: String) {{
+    search(query: $q, type: ISSUE, first: $limit, after: $endCursor) {{
+      nodes {{
+        ... on PullRequest {{
+          number
+          title
+          state
+          url
+          isDraft
+          {_util.STATUS_CHECK_FIELDS}
+          {_util.REVIEW_FIELDS}
+        }}
+      }}
+      pageInfo {{
+        hasNextPage
+        endCursor
+      }}
+    }}
+  }}
+"""
+
+
+def _search_prs(
+    client: GitHubClient, project_id: str
+) -> list[dict[str, t.Any]]:
+    prs: list[dict[str, t.Any]] = []
+    end_cursor = None
+    q = f"repo:{project_id} author:@me state:open type:pr"
+    while True:
+        variables: dict[str, t.Any] = {
+            "q": q,
+            "limit": 100,
+            "endCursor": end_cursor,
+        }
+        data = client.graphql(_QUERY, variables)["search"]
+        prs.extend(data["nodes"])
+        if not data["pageInfo"]["hasNextPage"]:
+            break
+        end_cursor = data["pageInfo"]["endCursor"]
+    return prs
 
 
 def list_cmd(remote: str) -> list[cr.CodeReview]:
     f = get_forge_info(remote)
     log.info(f"Listing PRs for {f.remote_url} ({f.project_id})")
-    prs = json.loads(
-        exec.run(
-            "gh",
-            "pr",
-            "list",
-            "--repo",
-            str(f.remote_url),
-            "--author",
-            "@me",
-            "--json",
-            "number,title,state,url,statusCheckRollup,isDraft,reviews",
-        )
-    )
+    prs = _search_prs(f.client, f.project_id)
+
     crs: list[cr.CodeReview] = []
     c2c = {
         "SUCCESS": "green",
@@ -33,25 +65,20 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
         "FAILURE": "red",
     }
     for pr in prs:
-        # Merge status checks into a blockers string
         checks = [
             cr.Blocker(
                 name=check["name"],
                 color=c2c.get(check["conclusion"], "normal"),
                 url=check["detailsUrl"],
             )
-            for check in pr.get("statusCheckRollup", [])
+            for check in _util.flatten_checks(pr)
         ]
-
-        # Determine PR state based on draft status and reviews
-        is_draft = pr.get("isDraft", False)
-        reviews = pr.get("reviews", [])
 
         crs.append(
             cr.CodeReview(
                 cr_id="#" + str(pr["number"]),
                 title=cr.Title(pr["title"], url=httpx.URL(pr["url"])),
-                state=colour_state(is_draft=is_draft, reviews=reviews),
+                state=_util.pr2state(pr),
                 checks=checks,
                 blockers=[],
             )
