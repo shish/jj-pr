@@ -8,11 +8,15 @@ import httpx
 from ...utils import exec, git, jj, text
 from .. import cr
 from ..base import Forge
+from .client import GitHubClient
 
 log = logging.getLogger(__name__)
 
 
 class GitHub(Forge):
+    ###################################################################
+    # Info
+
     def __init__(self, remote: str):
         super().__init__(remote)
 
@@ -22,6 +26,7 @@ class GitHub(Forge):
             self.forge_url = self.remote_url.copy_with(
                 scheme="https", username=None, port=None, path=None
             )
+        self.client = GitHubClient(self.forge_url)
 
         if match := re.match("^/([^/]+?/[^/]+?)(\\.git)?$", self.remote_url.path):
             self.project_id = match.group(1)
@@ -30,7 +35,38 @@ class GitHub(Forge):
                 f"Invalid GitHub remote URL format: {self.remote_url}. Expected format: owner/repo"
             )
 
-        self.default_merge_target = git.get_merge_target()
+        self.repo_info = self._get_repo_info()
+        self.default_merge_target = self.repo_info["defaultBranchRef"]["name"] or git.get_merge_target()
+
+    def _get_repo_info(self) -> dict[str, t.Any]:
+        query = """
+          fragment repo on Repository {
+            id
+            name
+            owner { login }
+            viewerPermission
+            defaultBranchRef {
+              name
+            }
+            isPrivate
+          }
+          query RepositoryNetwork($owner: String!, $name: String!) {
+            repository(owner: $owner, name: $name) {
+              ...repo
+              parent {
+                ...repo
+              }
+            }
+          }
+        """
+        variables = {
+            "owner": self.project_id.split("/")[0],
+            "name": self.project_id.split("/")[1],
+        }
+        return self.client.graphql(query, variables)["repository"]
+
+    ###################################################################
+    # Upload
 
     def upload_cr(
         self,
@@ -86,6 +122,9 @@ class GitHub(Forge):
                     args.extend(["-b", message])
                 exec.run(*args)
 
+    ###################################################################
+    # Download
+
     def download_cr(self, identifier: str) -> None:
         log.info(f"Downloading PR {identifier} from {self.remote_url}")
         exec.run(
@@ -97,12 +136,18 @@ class GitHub(Forge):
             str(self.remote_url),
         )
 
+    ###################################################################
+    # Rebase
+
     def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
         jj.git_fetch(all_remotes=True)
         for root in change_ids:
             base = f"{self.default_merge_target}@{self.remote}"
             print(f"Rebasing {root} onto {base}")
             jj.rebase(d=base, s=root)
+
+    ###################################################################
+    # List
 
     def list_crs(self) -> list[cr.CodeReview]:
         log.info(f"Listing PRs for {self.remote_url} ({self.project_id})")
@@ -151,6 +196,9 @@ class GitHub(Forge):
                 )
             )
         return crs
+
+    ###################################################################
+    # Log
 
     def log(self, args: list[str]) -> str:
         def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
