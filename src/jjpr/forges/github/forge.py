@@ -126,15 +126,58 @@ class GitHub(Forge):
     # Download
 
     def download_cr(self, identifier: str) -> None:
+        # GH_DEBUG=api gh pr checkout 13
         log.info(f"Downloading PR {identifier} from {self.remote_url}")
-        exec.run(
-            "gh",
-            "pr",
-            "checkout",
-            identifier,
-            "--repo",
-            str(self.remote_url),
-        )
+        owner = self.project_id.split("/")[0]
+        name = self.project_id.split("/")[1]
+        pr_info = self._get_pr_info(owner, name, int(identifier.lstrip("#")))
+        branch_name = pr_info["headRefName"]
+        jj.git_fetch(remote=self.remote)
+        jj.bookmark_track(branch_name, remote=self.remote)
+        jj.new(branch_name)
+
+    def _get_pr_info(self, owner: str, name: str, pr_number: int) -> dict[str, t.Any]:
+        query = """
+          query GetPullRequest($owner: String!, $name: String!, $number: Int!) {
+            repository(owner: $owner, name: $name) {
+              pullRequest(number: $number) {
+                id
+                title
+                state
+                url
+                isDraft
+                reviews(first: 100) {
+                  nodes {
+                    state
+                  }
+                }
+                commits(first: 100) {
+                  nodes {
+                    commit {
+                      statusCheckRollup {
+                        contexts(first: 100) {
+                          nodes {
+                            ... on StatusContext {
+                              context
+                              state
+                              targetUrl
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        """
+        variables = {
+            "owner": owner,
+            "name": name,
+            "number": str(pr_number),
+        }
+        return self.client.graphql(query, variables)["repository"]["pullRequest"]
 
     ###################################################################
     # Rebase

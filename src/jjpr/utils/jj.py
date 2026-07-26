@@ -53,6 +53,10 @@ def bookmark_create(name: str, r: RevSet) -> None:
     run("bookmark", "create", name, "-r", r, cap=False)
 
 
+def bookmark_track(name: str, remote: str) -> None:
+    run("bookmark", "track", name, "--remote", remote, cap=False)
+
+
 def commit(m: str) -> None:
     run("commit", "-m", m, cap=False)
 
