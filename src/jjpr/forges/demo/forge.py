@@ -60,10 +60,16 @@ class Demo(Forge):
     Phabricator account, or for taking screenshots and writing docs.
     """
 
+    ###################################################################
+    # Info
+
     def __init__(self, remote: str):
         super().__init__(remote)
         self.forge_url = httpx.URL("https://demo.example.com")
         self.project_id = "demo/repo"
+
+    ###################################################################
+    # Upload
 
     def upload_cr(
         self,
@@ -74,11 +80,20 @@ class Demo(Forge):
     ) -> None:
         pass
 
+    ###################################################################
+    # Download
+
     def download_cr(self, identifier: str) -> None:
         pass
 
+    ###################################################################
+    # Rebase
+
     def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
         pass
+
+    ###################################################################
+    # List
 
     def list_crs(self) -> list[cr.CodeReview]:
         return [
@@ -100,6 +115,9 @@ class Demo(Forge):
             for demo in _DEMO_CRS
         ]
 
+    ###################################################################
+    # Log
+
     def log(self, args: list[str]) -> str:
         def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
             return {pr_id: _demo_annotation(pr_id) for pr_id in pr_ids}
@@ -110,6 +128,9 @@ class Demo(Forge):
             _pr_ids_to_states,
         )
 
+
+###################################################################
+# Utils
 
 def _demo_annotation(seed: str) -> str:
     name, color, checks = _DEMO_LOG_STATES[_stable_index(seed, len(_DEMO_LOG_STATES))]

@@ -398,6 +398,9 @@ class Phabricator(Forge):
         )
 
 
+###################################################################
+# Utils
+
 def _colour_state(state: str, url: httpx.URL) -> cr.State:
     c = {
         "Draft": "cyan",

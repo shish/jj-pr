@@ -13,6 +13,9 @@ log = logging.getLogger(__name__)
 
 
 class Gerrit(Forge):
+    ###################################################################
+    # Info
+
     def __init__(self, remote: str):
         super().__init__(remote)
         if conf := jj.config_get("gerrit.review-url"):
@@ -35,6 +38,9 @@ class Gerrit(Forge):
 
         self.client = GerritClient(self.forge_url)
 
+    ###################################################################
+    # Upload
+
     def upload_cr(
         self,
         ref: str | None,
@@ -54,6 +60,9 @@ class Gerrit(Forge):
             message=message,
             remote_branch=self.default_merge_target,
         )
+
+    ###################################################################
+    # Download
 
     def download_cr(self, identifier: str) -> None:
         log.info(f"Fetching Gerrit change {identifier}")
@@ -78,12 +87,18 @@ class Gerrit(Forge):
         exec.run("git", "fetch", self.remote, f"{current_rev}:{remote_id}")
         exec.run("git", "checkout", remote_id)
 
+    ###################################################################
+    # Rebase
+
     def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
         jj.git_fetch(all_remotes=True)
         for root in change_ids:
             base = f"{self.default_merge_target}@{self.remote}"
             print(f"Rebasing {root} onto {base}")
             jj.rebase(d=base, s=root)
+
+    ###################################################################
+    # List
 
     def _get_checks(self, change_number: int) -> list[dict[str, t.Any]]:
         """Fetch CI check statuses for a change via the Gerrit checks plugin.
@@ -149,6 +164,9 @@ class Gerrit(Forge):
 
         return crs
 
+    ###################################################################
+    # Log
+
     def log(self, args: list[str]) -> str:
         def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
             id_to_state: dict[str, str] = {}
@@ -182,6 +200,9 @@ class Gerrit(Forge):
             _pr_ids_to_states,
         )
 
+
+###################################################################
+# Utils
 
 def _colour_state(
     is_private: bool = False,
