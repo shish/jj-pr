@@ -9,7 +9,7 @@ import pytest
 
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import netrc
-from .client import GerritClient
+from ._client import GerritClient
 
 
 @pytest.fixture(scope="class")

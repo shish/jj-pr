@@ -13,7 +13,7 @@ import tenacity as tc
 
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import netrc
-from .client import PhabricatorClient
+from ._client import PhabricatorClient
 
 log = logging.getLogger(__name__)
 

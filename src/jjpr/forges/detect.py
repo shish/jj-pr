@@ -1,13 +1,35 @@
 import logging
+from typing import Protocol
 
-from ..utils import exc, git, jj
-from .base import Forge
-from .demo.forge import Demo
-from .gerrit.forge import Gerrit
-from .github.forge import GitHub
-from .phabricator.forge import Phabricator
+from ..utils import cr, exc, git, jj
+from . import demo, gerrit, github, phabricator
 
 log = logging.getLogger(__name__)
+
+
+class ForgeModule(Protocol):
+    __name__: str
+
+    @staticmethod
+    def upload_cmd(
+        remote: str,
+        ref: str | None,
+        draft: bool = False,
+        message: str | None = None,
+        pre_commit: bool = True,
+    ) -> None: ...
+
+    @staticmethod
+    def download_cmd(remote: str, identifier: str) -> None: ...
+
+    @staticmethod
+    def rebase_cmd(remote: str, change_ids: list[jj.ChangeID]) -> None: ...
+
+    @staticmethod
+    def list_cmd(remote: str) -> list[cr.CodeReview]: ...
+
+    @staticmethod
+    def log_cmd(remote: str, args: list[str]) -> str: ...
 
 
 def _get_forge_from_config() -> str | None:
@@ -32,7 +54,7 @@ def _get_forge_from_remote_url(remote: str) -> str | None:
     return None
 
 
-def get_forge(remote: str) -> Forge:
+def get_forge(remote: str) -> ForgeModule:
     forge = (
         _get_forge_from_config()
         or _get_forge_from_remote_name(remote)
@@ -40,13 +62,13 @@ def get_forge(remote: str) -> Forge:
     )
 
     if forge == "github":
-        return GitHub(remote)
+        return github
     elif forge == "phabricator":
-        return Phabricator(remote)
+        return phabricator
     elif forge == "gerrit":
-        return Gerrit(remote)
+        return gerrit
     elif forge == "demo":
-        return Demo(remote)
+        return demo
     else:
         raise exc.UserError(
             "Could not detect forge from remote URL. "

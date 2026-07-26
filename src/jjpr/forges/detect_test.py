@@ -72,7 +72,7 @@ class TestGetForge:
         run_cmd("jj", "config", "set", "--repo", "pr.forge", "github")
         f = detect.get_forge("origin")
         assert f is not None
-        assert f.__class__.__name__ == "GitHub"
+        assert f.__name__ == "jjpr.forges.github"
 
     def test_detect_phabricator(self, tmp_repo: Path):
         rc = Path.home() / ".arcrc"
@@ -84,7 +84,7 @@ class TestGetForge:
         run_cmd("git", "remote", "set-url", "origin", "https://phab.foo.com/foo/bar")
         f = detect.get_forge("origin")
         assert f is not None
-        assert f.__class__.__name__ == "Phabricator"
+        assert f.__name__ == "jjpr.forges.phabricator"
 
     def test_detect_gerrit(self, tmp_repo: Path):
         netrc.write("gerrit.foo.com", "l", "p")
@@ -92,13 +92,13 @@ class TestGetForge:
         run_cmd("git", "remote", "set-url", "origin", "https://gerrit.foo.com/foo/bar")
         f = detect.get_forge("origin")
         assert f is not None
-        assert f.__class__.__name__ == "Gerrit"
+        assert f.__name__ == "jjpr.forges.gerrit"
 
     def test_detect_demo(self, tmp_repo: Path):
         run_cmd("jj", "config", "set", "--repo", "pr.forge", "demo")
         f = detect.get_forge("origin")
         assert f is not None
-        assert f.__class__.__name__ == "Demo"
+        assert f.__name__ == "jjpr.forges.demo"
 
     def test_detect_unknown_forge(self, tmp_repo: Path):
         run_cmd("git", "remote", "set-url", "origin", "https://unknown.com/foo/bar")

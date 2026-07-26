@@ -1,13 +1,14 @@
+import json
+import logging
 import os
 import typing as t
-import logging
-import json
 
 import httpx
 
 from ...utils import exc, netrc
 
 log = logging.getLogger(__name__)
+
 
 class GitHubClient:
     def __init__(self, base_url: httpx.URL):
@@ -41,19 +42,18 @@ class GitHubClient:
             f"environment variable, or add credentials for {host} to ~/.netrc"
         )
 
-    def get(self):
-        pass
-
-    def post(self, name: str):
-        pass
-
     def graphql(self, query: str, variables: dict[str, str] | None = None):
         data: dict[str, t.Any] = {"query": query}
         if variables:
             data["variables"] = variables
         response = self.client.post("/graphql", json=data)
         response.raise_for_status()
-        data = response.json()["data"]
+        js = response.json()
+        if "errors" in js:
+            raise exc.UserError(
+                f"GraphQL query failed: {json.dumps(js['errors'], indent=2)}"
+            )
+        data = js["data"]
 
         # fmt: off
         log.debug(

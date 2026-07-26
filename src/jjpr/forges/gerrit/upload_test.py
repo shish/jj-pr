@@ -2,17 +2,6 @@ import json
 from pathlib import Path
 
 from ...conftest import run_cmd
-from .forge import GitHub
-
-
-class TestMeta:
-    def test_meta(self, tmp_home: Path, tmp_repo: Path):
-        r = "git@github.com:shish/jj-pr.git"
-        run_cmd("git", "remote", "set-url", "origin", r)
-        f = GitHub("origin")
-        assert f.remote_url == "ssh://git@github.com/shish/jj-pr.git"
-        assert f.forge_url == "https://github.com"
-        assert f.project_id == "shish/jj-pr"
 
 
 class TestUpload:
@@ -44,12 +33,11 @@ class TestUpload:
         run_cmd("jj", "pr", "upload")
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
-        assert len(js) == 1
-        assert js[0]["title"]["text"] == "Test commit 1"
+        assert len(js) == 2
+        assert js[0]["title"]["text"] == "Test commit 2"
+        assert js[1]["title"]["text"] == "Test commit 1"
 
     def test_push_two_at_once(self, clone: Path):
-        # github is branch-based, so pushing two commits at once will
-        # only create a PR for the top commit
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
 
@@ -59,16 +47,6 @@ class TestUpload:
         run_cmd("jj", "pr", "upload")
 
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
-        assert len(js) == 1
+        assert len(js) == 2
         assert js[0]["title"]["text"] == "Test commit 2"
-
-
-class TestLog:
-    def test_log(self, clone: Path):
-        (clone / "test_file.txt").write_text("Test content")
-        run_cmd("jj", "commit", "-m", "Test commit 1")
-        run_cmd("jj", "pr", "upload")
-
-        log_output = run_cmd("jj", "pr", "log")
-        assert "Test commit 1" in log_output
-        assert "Needs Review" in log_output
+        assert js[1]["title"]["text"] == "Test commit 1"

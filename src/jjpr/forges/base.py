@@ -1,59 +1,25 @@
 import logging
-from abc import ABC, abstractmethod
+import typing as t
+from dataclasses import dataclass, field
 
-from ..utils import git, jj
-from . import cr
+import httpx
+
+from ..utils import git
 
 log = logging.getLogger(__name__)
 
-
-class ForgeException(Exception):
-    """Base exception for forge-related errors."""
-
-    pass
+TClient = t.TypeVar("TClient")
 
 
-class Forge(ABC):
-    def __init__(self, remote: str) -> None:
-        self.remote = remote
-        self.remote_url = git.get_remote_url(remote)
+@dataclass
+class ForgeInfo(t.Generic[TClient]):
+    remote: str
+    remote_url: httpx.URL = field(init=False)
+    forge_url: httpx.URL = field(init=False)
+    project_id: str = field(default="unknown")
+    default_merge_target: str | None = field(default=None)
+    client: TClient = field(default=None)  # type: ignore
+
+    def __post_init__(self):
+        self.remote_url = git.get_remote_url(self.remote)
         self.forge_url = self.remote_url
-        self.project_id = "unknown"
-
-    def asdict(self) -> dict[str, str]:
-        return {
-            "name": self.__class__.__name__,
-            "remote": self.remote,
-            "remote_url": str(self.remote_url),
-            "forge_url": str(self.forge_url),
-            "project_id": self.project_id,
-        }
-
-    def __rich__(self) -> str:
-        return f"[link={self.forge_url}]{self.__class__.__name__}[/link]"
-
-    @abstractmethod
-    def upload_cr(
-        self,
-        ref: str | None,
-        draft: bool = False,
-        message: str | None = None,
-        pre_commit: bool = True,
-    ) -> None:
-        """Upload changes to the forge."""
-
-    @abstractmethod
-    def download_cr(self, identifier: str) -> None:
-        """Download changes from the forge."""
-
-    @abstractmethod
-    def rebase_crs(self, change_ids: list[jj.ChangeID]) -> None:
-        """Rebase a CR from the forge."""
-
-    @abstractmethod
-    def list_crs(self) -> list[cr.CodeReview]:
-        """List open CRs for this project, returning a list of CRListItem objects."""
-
-    @abstractmethod
-    def log(self, args: list[str]) -> str:
-        """Run `jj log` with annotated extra output for the forge."""

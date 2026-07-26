@@ -4,10 +4,7 @@ from dataclasses import dataclass, field
 import httpx
 from rich.markup import escape
 
-from ..utils import text
-
-if t.TYPE_CHECKING:  # pragma: no cover
-    from .base import Forge
+from . import text
 
 
 @dataclass
@@ -60,7 +57,6 @@ class State:
 
 @dataclass
 class CodeReview:
-    forge: "Forge"
     cr_id: str
     title: Title
     state: State

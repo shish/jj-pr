@@ -1,6 +1,5 @@
 import json
 from dataclasses import asdict
-from unittest.mock import Mock
 
 import httpx
 
@@ -53,16 +52,12 @@ class TestState:
 
 class TestCodeReview:
     def test_asdict_with_extra(self) -> None:
-        forge_mock = Mock()
-        forge_mock.asdict.return_value = {"name": "github"}
-
         title = cr.Title(text="Fix bug", url=None)
         state = cr.State(name="Open", color=None, url=None)
         checks = []
         blockers = []
 
         code_review = cr.CodeReview(
-            forge=forge_mock,
             cr_id="456",
             title=title,
             state=state,
@@ -76,16 +71,12 @@ class TestCodeReview:
         assert result["extra"]["branch"] == "feature/x"
 
     def test_json(self) -> None:
-        forge_mock = Mock()
-        forge_mock.asdict.return_value = {"name": "github"}
-
         title = cr.Title(text="Fix bug", url=httpx.URL("https://example.com/fix-bug"))
         state = cr.State(name="Open", color=None, url=None)
         checks = []
         blockers = []
 
         code_review = cr.CodeReview(
-            forge=forge_mock,
             cr_id="456",
             title=title,
             state=state,

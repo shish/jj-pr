@@ -34,17 +34,22 @@ def api_url(url: httpx.URL) -> httpx.URL:
 
 
 @pytest.fixture(scope="class")
-def session(
-    api_url: httpx.URL,
-) -> t.Generator[httpx.Client, None, None]:
-    """Create and validate a GitHub API session."""
+def api_token() -> str:
     token = os.getenv("JJPR_TEST_GITHUB_API_TOKEN")
     if not token:
         pytest.skip("JJPR_TEST_GITHUB_API_TOKEN not set, skipping tests")
+    return token
 
+
+@pytest.fixture(scope="class")
+def session(
+    api_url: httpx.URL,
+    api_token: str,
+) -> t.Generator[httpx.Client, None, None]:
+    """Create and validate a GitHub API session."""
     client = httpx.Client(
         headers={
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {api_token}",
             "Accept": "application/vnd.github.v3+json",
             # "X-GitHub-Api-Version: 2026-03-10",
         }

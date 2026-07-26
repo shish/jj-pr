@@ -1,14 +1,17 @@
 import json
 import logging
+import os
+import shlex
 import sys
 import typing as t
 from pathlib import Path
 
 import typer
+from rich.console import Console
+from rich.table import Table
 
-from . import cmds
-from .forges.cr import json_default
-from .utils import exc, jj
+from .forges import detect
+from .utils import cr, exc, exec, git, jj
 
 app = typer.Typer(
     help="Unified CLI for multiple code review forges",
@@ -20,15 +23,19 @@ OutputFormat = t.Literal["table", "json"]
 
 
 class GlobalOptions:
-    def __init__(self, repo: cmds.Repo, format: OutputFormat) -> None:
-        self.repo = repo
+    def __init__(self, repository: Path, remote: str, format: OutputFormat) -> None:
+        self.repository = repository
+        self.remote = remote
         self.format = format
+        self.backend = detect.get_forge(remote)
+        self.original_cwd = Path.cwd()
+        os.chdir(repository)
 
 
 @app.callback(invoke_without_command=False)
 def main(
     ctx: typer.Context,
-    path: Path | None = typer.Option(
+    repository: Path | None = typer.Option(
         None,
         "--repository",
         help="Path to respository to operate on",
@@ -56,13 +63,14 @@ def main(
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore.http11").setLevel(logging.WARNING)
 
-    if not path:
+    if not repository:
         try:
-            path = Path(jj.root())
+            repository = Path(jj.root())
         except Exception as e:
             raise exc.UserError(f"Can't detect current repository: {e}")
 
-    ctx.obj = GlobalOptions(cmds.Repo(path, remote), format)
+    remote = remote or git.default_remote()
+    ctx.obj = GlobalOptions(repository, remote, format)
 
 
 @app.command("upload")
@@ -87,11 +95,13 @@ def upload_command(
     ),
 ) -> None:
     """Upload current stack to the forge."""
-    r = t.cast(GlobalOptions, ctx.obj).repo
-    with r.chdir():
-        if pre_commit:
-            cmds.pre_commit_stack(ref)
-        r.remote.upload_cr(ref, draft=draft, message=message, pre_commit=pre_commit)
+    go = t.cast(GlobalOptions, ctx.obj)
+    if pre_commit:
+        changes = jj.change_ids(ref) if ref else jj.pushable_stack()
+        _pre_commit_stack(changes)
+    go.backend.upload_cmd(
+        go.remote, ref, draft=draft, message=message, pre_commit=pre_commit
+    )
 
 
 @app.command("rebase")
@@ -106,17 +116,16 @@ def rebase_command(
     revset: str | None = typer.Argument(None, help="Revset to rebase"),
 ) -> None:
     """Pull from remote and rebase current stack."""
-    r = t.cast(GlobalOptions, ctx.obj).repo
+    go = t.cast(GlobalOptions, ctx.obj)
     if all:
         revset = "mutable()"
     elif revset:
         revset = revset
     else:
         revset = "@"
-    with r.chdir():
-        roots = jj.change_ids(f"roots(mutable()::{revset})")
-        log.info(f"Rebasing revset: {revset} ({roots})")
-        r.remote.rebase_crs(roots)
+    roots = jj.change_ids(f"roots(mutable()::{revset})")
+    log.info(f"Rebasing revset: {revset} ({roots})")
+    go.backend.rebase_cmd(go.remote, roots)
 
 
 @app.command("download")
@@ -125,9 +134,8 @@ def download_command(
     identifier: str = typer.Argument(None, help="PR/Diff/CR ID"),
 ) -> None:
     """Download a PR/CR/Diff from the forge."""
-    r = t.cast(GlobalOptions, ctx.obj).repo
-    with r.chdir():
-        r.remote.download_cr(identifier)
+    go = t.cast(GlobalOptions, ctx.obj)
+    go.backend.download_cmd(go.remote, identifier)
 
 
 @app.command("list")
@@ -135,19 +143,41 @@ def list_command(
     ctx: typer.Context,
 ) -> None:
     """List my open PRs/CRs/Diffs for the current project."""
-    gos = t.cast(GlobalOptions, ctx.obj)
-    r = gos.repo
-    with r.chdir():
-        items = r.remote.list_crs()
+    go = t.cast(GlobalOptions, ctx.obj)
+    items = go.backend.list_cmd(go.remote)
 
     # Output the results
-    if gos.format == "json":
-        print(json.dumps(items, indent=4, default=json_default))
+    if go.format == "json":
+        print(json.dumps(items, indent=4, default=cr.json_default))
+    elif not items:
+        print("No items found.")
     else:
-        if items:
-            cmds.display_list(items)
-        else:
-            print("No items found.")
+        console = Console()
+
+        all_extra_keys = set()
+        for item in items:
+            all_extra_keys.update(item.extra.keys())
+
+        table = Table()
+        table.add_column("ID", style="blue", min_width=4)
+        table.add_column("Title", style="green")
+        table.add_column("State", width=12)
+        table.add_column("Checks", min_width=8)
+        table.add_column("Blockers", min_width=8)
+        for key in sorted(all_extra_keys):
+            table.add_column(key.title(), style="magenta")
+
+        for item in items:
+            table.add_row(
+                item.cr_id,
+                item.title,
+                item.state,
+                ", ".join(b.__rich__() for b in item.checks),
+                ", ".join(b.__rich__() for b in item.blockers),
+                *[item.extra.get(key, "") for key in sorted(all_extra_keys)],
+            )
+
+        console.print(table)
 
 
 @app.command("pre-commit")
@@ -155,10 +185,36 @@ def pre_commit_command(
     ctx: typer.Context,
     ref: str | None = typer.Argument(None, help="Ref to check"),
 ) -> None:
-    """Run pre-commit hooks."""
-    r = t.cast(GlobalOptions, ctx.obj).repo
-    with r.chdir():
-        cmds.pre_commit_stack(ref)
+    """Run pre-commit hooks on a stack of changes."""
+    # go = t.cast(GlobalOptions, ctx.obj)
+    changes = jj.change_ids(ref) if ref else jj.checkable_stack()
+    _pre_commit_stack(changes)
+
+
+def _pre_commit_stack(changes: list[jj.ChangeID]) -> None:
+    pc_cmd = Path(".git/hooks/pre-commit")
+    if not pc_cmd.exists():
+        log.info("No pre-commit configuration found, skipping")
+        return
+
+    for n, change_id in enumerate(changes):
+        if n > 0:
+            print("=" * 80)
+        _pre_commit_change(change_id, str(pc_cmd))
+
+
+def _pre_commit_change(change_id: str, pc_cmd: str) -> None:
+    with jj.with_edit(change_id):
+        files = jj.files_in(change_id)
+        files = [f for f in files if Path(f).exists()]
+        descr = (jj.description_of(change_id).splitlines() or ["(untitled)"])[0]
+        print(f'Checking "{descr}" ({change_id})')
+        print(f"Affected files: {shlex.join(files)}")
+        try:
+            exec.run("git", "add", "--all", cap=False)
+            exec.run(pc_cmd, cap=False)
+        except Exception:
+            raise exc.UserError(f"pre-commit checks failed for change {change_id}")
 
 
 @app.command("log")
@@ -166,9 +222,8 @@ def log_command(
     ctx: typer.Context,
 ) -> None:
     """Run `jj log` with annotated extra output for code review status."""
-    r = t.cast(GlobalOptions, ctx.obj).repo
-    with r.chdir():
-        print(r.remote.log(ctx.args))
+    go = t.cast(GlobalOptions, ctx.obj)
+    print(go.backend.log_cmd(go.remote, ctx.args))
 
 
 def run() -> None:

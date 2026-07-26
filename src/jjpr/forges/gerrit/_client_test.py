@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from ...utils import exc, netrc
-from .client import GerritClient
+from ._client import GerritClient
 
 log = logging.getLogger(__name__)
 

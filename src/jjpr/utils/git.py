@@ -5,6 +5,13 @@ import httpx
 from . import exc, exec
 
 
+def default_remote() -> str:
+    try:
+        return exec.run("git", "remote", "show", "-n").splitlines()[0]
+    except Exception as e:  # pragma: no cover
+        raise exc.UserError(f"Failed to get default git remote: {e}")
+
+
 def get_remote_url(remote_name: str = "origin") -> httpx.URL:
     try:
         url = exec.run("git", "config", "--get", f"remote.{remote_name}.url")

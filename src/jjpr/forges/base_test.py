@@ -3,40 +3,21 @@ from unittest import mock
 import httpx
 
 from ..utils import git
-from . import base, cr
+from . import base
 
 
-class DummyForge(base.Forge):
-    def __init__(self) -> None:
+class TestForgeInfo:
+    def test_init(self) -> None:
         with mock.patch.object(
             git,
             "get_remote_url",
             return_value=httpx.URL("https://example.com/dummy.git"),
         ):
-            super().__init__("https://example.com/dummy.git")
+            f = base.ForgeInfo("origin")
 
-    def upload_cr(
-        self,
-        ref: str | None,
-        draft: bool = False,
-        message: str | None = None,
-        pre_commit: bool = True,
-    ) -> None: ...
-
-    def download_cr(self, identifier: str) -> None: ...
-
-    def rebase_crs(self, change_ids: list[str]) -> None: ...
-
-    def list_crs(self, all_projects: bool = False) -> list[cr.CodeReview]:
-        return []
-
-    def log(self, args: list[str]) -> str:
-        return ""
-
-
-class TestForge:
-    def test_str(self) -> None:
-        f = DummyForge()
-        str(f)
-        f.__rich__()
-        f.asdict()
+        assert f.remote == "origin"
+        assert f.remote_url == "https://example.com/dummy.git"
+        assert f.forge_url == "https://example.com/dummy.git"
+        assert f.project_id == "unknown"
+        assert f.default_merge_target is None
+        assert f.client is None

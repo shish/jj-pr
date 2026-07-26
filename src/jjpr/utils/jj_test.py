@@ -38,6 +38,19 @@ class TestDirectMappings:
         bookmarks_after_advance = jj.bookmarks()
         assert bookmark_name in bookmarks_after_advance
 
+    def test_bookmark_track(self, repo_with_commits: Path):
+        bookmark_name = "test-bookmark"
+        remote_name = "origin"
+
+        # Create a bookmark pointing to the current change
+        change_id = jj.change_id("@")
+        jj.bookmark_create(bookmark_name, change_id)
+
+        # Track the bookmark with the specified remote
+        jj.bookmark_track(bookmark_name, remote_name)
+        bookmarks = jj.bookmarks()
+        assert f"{bookmark_name}@{remote_name}" in bookmarks
+
     def test_commit(self, repo_with_commits: Path):
         with mock.patch("jjpr.utils.jj.run") as mock_run:
             jj.commit("my message")
