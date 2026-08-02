@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 
 from . import main
-from .utils import jj
+from .utils import exc, jj
 
 
 class TestPreCommitStack:
@@ -29,5 +29,5 @@ class TestPreCommitChange:
         main._pre_commit_change("@-", "true")
 
     def test_pre_commit_change_fail(self, repo_with_commits: Path):
-        with pytest.raises(Exception):
+        with pytest.raises(exc.UserError):
             main._pre_commit_change("@-", "false")

@@ -30,6 +30,9 @@ dev = [
     "ty>=0.0.49",
 ]
 
+[tool.ruff.lint]
+ignore = ["BLE001", "B008", "SIM117", "RUF015"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/jjpr"]
 

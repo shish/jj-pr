@@ -10,9 +10,6 @@ from ._client import PhabricatorClient
 
 log = logging.getLogger(__name__)
 
-PhRev = int
-PhID = str
-
 
 def get_forge_info(remote: str) -> ForgeInfo[PhabricatorClient]:
     f = ForgeInfo[PhabricatorClient](remote)

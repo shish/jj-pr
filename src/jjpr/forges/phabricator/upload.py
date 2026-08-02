@@ -7,7 +7,7 @@ import typing as t
 from ...utils import exc, exec, jj
 from . import arc
 from ._client import PhabricatorClient
-from ._info import ForgeInfo, PhID, PhRev, get_forge_info
+from ._info import ForgeInfo, PhID, PhRev, PhTransactions, get_forge_info
 
 log = logging.getLogger(__name__)
 
@@ -81,12 +81,12 @@ def _push_one(
 
 def _parse_commit_message(
     client: PhabricatorClient, change_id: jj.ChangeID
-) -> list[dict[str, t.Any]]:
+) -> PhTransactions:
     trs = client.call(
         "differential.parsecommitmessage",
         corpus=jj.description_of(change_id),
     )["transactions"]
-    for r in {"title", "summary", "testPlan"}:
+    for r in ["title", "summary", "testPlan"]:
         for tr in trs:
             if tr["type"] == r:
                 break

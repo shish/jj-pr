@@ -42,7 +42,7 @@ class GitHubClient:
             f"environment variable, or add credentials for {host} to ~/.netrc"
         )
 
-    def graphql(self, query: str, variables: t.Mapping[str, str|int]):
+    def graphql(self, query: str, variables: t.Mapping[str, str | int]):
         data: dict[str, t.Any] = {"query": query}
         if variables:
             data["variables"] = variables

@@ -27,15 +27,15 @@ def unit_current_diff(pre_commit: bool) -> tuple[UnitStatus, list]:
         return (UnitStatus.SKIP, [])
     try:
         fail_data = exec.run("arc", "unit", "--output", "json", cap=True)
-        fails = json.loads(fail_data)
+        fails_per_file = json.loads(fail_data)
         worst = UnitStatus.OKAY
-        for _file, fails in fails.items():
-            for lint in fails:
+        for lints in fails_per_file.values():
+            for lint in lints:
                 if lint["severity"] == "warning":
                     worst = UnitStatus.WARN
                 if lint["severity"] == "error":
                     worst = UnitStatus.FAIL
                     break
-        return (worst, fails)
+        return (worst, fails_per_file)
     except Exception:
         return (UnitStatus.FAIL, [])

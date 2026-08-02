@@ -33,15 +33,15 @@ def lint_current_diff(pre_commit: bool) -> tuple[LintStatus, LintResults]:
         lint_data = exec.run(
             "arc", "lint", "--apply-patches", "--output", "json", cap=True
         )
-        lints = json.loads(lint_data)
+        lints_per_file = json.loads(lint_data)
         worst = LintStatus.OKAY
-        for _file, lints in lints.items():
+        for lints in lints_per_file.values():
             for lint in lints:
                 if lint["severity"] == "warning":
                     worst = LintStatus.WARN
                 if lint["severity"] == "error":
                     worst = LintStatus.FAIL
                     break
-        return (worst, lints)
+        return (worst, lints_per_file)
     except Exception:
         return (LintStatus.FAIL, {})

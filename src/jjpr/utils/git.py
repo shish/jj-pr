@@ -35,7 +35,7 @@ def get_merge_target(remote: str = "origin") -> str:
             ref_path = output.split()[1]  # "refs/heads/main"
             if ref_path.startswith("refs/heads/"):
                 return ref_path[len("refs/heads/") :]
-        raise Exception(f"Could not parse git ls-remote output: {output}")
+        raise ValueError(f"Could not parse git ls-remote output: {output}")
     except Exception as e:
         raise exc.UserError(f"Failed to find HEAD in remote {remote}: {e}")
 
@@ -45,7 +45,7 @@ def unique_branch_name(name: str) -> str:
     counter = 1
     unique_name = name
     while True:
-        result = subprocess.run(["git", "show-ref", "--quiet", unique_name])
+        result = subprocess.run(["git", "show-ref", "--quiet", unique_name], check=False)
         if result.returncode != 0:
             break
         unique_name = f"{name}-{counter}"

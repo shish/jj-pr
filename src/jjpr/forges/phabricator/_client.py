@@ -11,6 +11,11 @@ log = logging.getLogger(__name__)
 
 PhRev = int
 PhID = str
+PhTransactions = list[dict[str, t.Any]]
+
+
+class PhabricatorException(Exception):
+    """Exception raised for errors returned by the Phabricator API."""
 
 
 class PhabricatorClient:
@@ -69,7 +74,7 @@ class PhabricatorClient:
             raise
         js = response.json()
         if js.get("error_code"):
-            raise Exception(
+            raise PhabricatorException(
                 f"Phabricator API error: {js['error_code']} - {js.get('error_info')}"
             )
         return response.json()["result"]

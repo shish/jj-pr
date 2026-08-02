@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, NoReturn, Optional
+from typing import Any, NoReturn
 
 
 class DiffParseError(Exception):
@@ -107,7 +107,7 @@ def unescape_filename(name: str) -> str:
     applied to the quoted content, then decodes the resulting bytes as
     UTF-8, matching `ArcanistDiffParser::unescapeFilename()`.
     """
-    if re.match(r'^".+"$', name, re.S):
+    if re.match(r'^".+"$', name, re.DOTALL):
         return _stripcslashes(name[1:-1])
     return name
 
@@ -165,7 +165,7 @@ def _stripcslashes(text: str) -> str:
         return bytes(out).decode("latin-1")
 
 
-def extract_git_common_filename(paths: str) -> Optional[str]:
+def extract_git_common_filename(paths: str) -> str | None:
     """
     Extracts the common filename from two strings with differing path
     prefixes as found after `diff --git`. These strings may be quoted; if
@@ -227,7 +227,7 @@ class _Parser:
     def __init__(self) -> None:
         self.text: list[str] = []
         self.line = 0
-        self.is_git: Optional[bool] = None
+        self.is_git: bool | None = None
         self._changes: list[Change] = []
         self._by_path: dict[str, Change] = {}
 
@@ -246,28 +246,28 @@ class _Parser:
     def did_finish_parse(self) -> None:
         self.text = []
 
-    def get_line(self) -> Optional[str]:
+    def get_line(self) -> str | None:
         if 0 <= self.line < len(self.text):
             return self.text[self.line]
         return None
 
-    def get_line_trimmed(self) -> Optional[str]:
+    def get_line_trimmed(self) -> str | None:
         line = self.get_line()
         if line is not None:
             line = line.strip("\r\n")
         return line
 
-    def next_line(self) -> Optional[str]:
+    def next_line(self) -> str | None:
         self.line += 1
         return self.get_line()
 
-    def next_line_trimmed(self) -> Optional[str]:
+    def next_line_trimmed(self) -> str | None:
         line = self.next_line()
         if line is not None:
             line = line.strip("\r\n")
         return line
 
-    def next_nonempty_line(self) -> Optional[str]:
+    def next_nonempty_line(self) -> str | None:
         while True:
             line = self.next_line()
             if line is None or line.strip() != "":
@@ -279,7 +279,7 @@ class _Parser:
 
     # -- change bookkeeping ---------------------------------------------------
 
-    def build_change(self, path: Optional[str]) -> Change:
+    def build_change(self, path: str | None) -> Change:
         if path is not None and path in self._by_path:
             return self._by_path[path]
 
@@ -378,7 +378,7 @@ class _Parser:
         self.did_finish_parse()
         return self._changes
 
-    def _try_match_header(self, line: Optional[str]):
+    def _try_match_header(self, line: str | None):
         if line is None:
             return None
         for pattern in _HEADER_PATTERNS:
@@ -420,7 +420,7 @@ class _Parser:
 
     def parse_index_hunk(self, change: Change) -> None:
         is_git = bool(self.is_git)
-        move_source: Optional[Change] = None
+        move_source: Change | None = None
 
         line = self.get_line()
 
@@ -479,9 +479,7 @@ class _Parser:
                     old = self.build_change(change.old_path)
                     if old.type == ChangeType.MULTICOPY:
                         pass
-                    elif old.type == ChangeType.MOVE_AWAY:
-                        old.type = ChangeType.MULTICOPY
-                    elif old.type == ChangeType.COPY_AWAY:
+                    elif old.type == ChangeType.MOVE_AWAY or old.type == ChangeType.COPY_AWAY:
                         old.type = ChangeType.MULTICOPY
                     else:
                         old.type = ChangeType.MOVE_AWAY
@@ -494,9 +492,8 @@ class _Parser:
 
         line = self.get_line()
 
-        if is_git:
-            if line is not None and re.match(r"^index .*$", line):
-                line = self.next_nonempty_line()
+        if is_git and line is not None and re.match(r"^index .*$", line):
+            line = self.next_nonempty_line()
 
         if line is None or re.match(
             r"^(Index:|Property changes on:|diff --git|commit) ", line
@@ -602,7 +599,7 @@ class _Parser:
             del_lines = 0
             real: list[str] = []
             hit_next_hunk = False
-            raw_line: Optional[str] = None
+            raw_line: str | None = None
 
             while True:
                 raw_line = self.next_line()

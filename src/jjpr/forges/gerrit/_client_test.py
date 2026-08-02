@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 class TestGerritClient:
     def test_init(self, tmp_home: Path) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(exc.UserError):  # Missing credentials in ~/.netrc
             GerritClient(httpx.URL("https://example.com/a/project"))
 
         netrc.write("example.com", "user", "pass")

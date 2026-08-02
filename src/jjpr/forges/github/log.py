@@ -3,9 +3,9 @@ import typing as t
 import httpx
 
 from ...utils import cr, jj, text
+from . import _util
 from ._client import GitHubClient
 from ._info import get_forge_info
-from . import _util
 
 _PR_FIELDS = f"""
   url

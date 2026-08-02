@@ -4,9 +4,9 @@ import typing as t
 import httpx
 
 from ...utils import cr
+from . import _util
 from ._client import GitHubClient
 from ._info import get_forge_info
-from . import _util
 
 log = logging.getLogger(__name__)
 
@@ -33,9 +33,7 @@ _QUERY = f"""
 """
 
 
-def _search_prs(
-    client: GitHubClient, project_id: str
-) -> list[dict[str, t.Any]]:
+def _search_prs(client: GitHubClient, project_id: str) -> list[dict[str, t.Any]]:
     prs: list[dict[str, t.Any]] = []
     end_cursor = None
     q = f"repo:{project_id} author:@me state:open type:pr"

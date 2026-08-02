@@ -120,7 +120,7 @@ def rebase_command(
     if all:
         revset = "mutable()"
     elif revset:
-        revset = revset
+        pass  # revset = revset
     else:
         revset = "@"
     roots = jj.change_ids(f"roots(mutable()::{revset})")
