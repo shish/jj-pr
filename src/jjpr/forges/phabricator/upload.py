@@ -6,8 +6,8 @@ import typing as t
 
 from ...utils import exc, exec, jj
 from . import arc
-from ._client import PhabricatorClient
-from ._info import ForgeInfo, PhID, PhRev, PhTransactions, get_forge_info
+from ._client import PhabricatorClient, PhID, PhRev, PhTransactions
+from ._info import ForgeInfo, get_forge_info
 
 log = logging.getLogger(__name__)
 

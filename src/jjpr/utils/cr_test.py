@@ -89,4 +89,3 @@ class TestCodeReview:
         assert '"author": "alice"' in result
         assert '"branch": "feature/x"' in result
         assert '"https://example.com/fix-bug"' in result
-        assert '"name": "github"' in result

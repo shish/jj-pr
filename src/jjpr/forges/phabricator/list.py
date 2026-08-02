@@ -4,8 +4,8 @@ import typing as t
 import httpx
 
 from ...utils import cr
-from ._client import PhabricatorClient
-from ._info import PhID, get_forge_info
+from ._client import PhabricatorClient, PhID
+from ._info import get_forge_info
 from ._util import callsign_to_phid, check_color, colour_state
 
 log = logging.getLogger(__name__)
