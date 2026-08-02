@@ -479,7 +479,10 @@ class _Parser:
                     old = self.build_change(change.old_path)
                     if old.type == ChangeType.MULTICOPY:
                         pass
-                    elif old.type == ChangeType.MOVE_AWAY or old.type == ChangeType.COPY_AWAY:
+                    elif (
+                        old.type == ChangeType.MOVE_AWAY
+                        or old.type == ChangeType.COPY_AWAY
+                    ):
                         old.type = ChangeType.MULTICOPY
                     else:
                         old.type = ChangeType.MOVE_AWAY

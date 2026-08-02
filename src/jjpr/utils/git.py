@@ -45,7 +45,9 @@ def unique_branch_name(name: str) -> str:
     counter = 1
     unique_name = name
     while True:
-        result = subprocess.run(["git", "show-ref", "--quiet", unique_name], check=False)
+        result = subprocess.run(
+            ["git", "show-ref", "--quiet", unique_name], check=False
+        )
         if result.returncode != 0:
             break
         unique_name = f"{name}-{counter}"
