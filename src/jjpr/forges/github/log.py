@@ -1,5 +1,3 @@
-import typing as t
-
 from ...utils import cr, jj
 from .lib import client, info, util
 
@@ -27,8 +25,8 @@ def _branch_names(pr_ids: list[str]) -> list[str]:
 
 
 def _get_prs_by_branch(
-    client: client.GitHubClient, owner: str, name: str, branches: list[str]
-) -> list[dict[str, t.Any]]:
+    forge_info: info.GitHubInfo, owner: str, name: str, branches: list[str]
+) -> list[client.PrJson]:
     if not branches:
         return []
 
@@ -46,11 +44,11 @@ def _get_prs_by_branch(
         }}
       }}
     """
-    variables: dict[str, t.Any] = {"owner": owner, "name": name}
+    variables: client.GqlVars = {"owner": owner, "name": name}
     variables.update(zip(aliases, branches))
 
-    data = client.graphql(query, variables)["repository"]
-    prs: list[dict[str, t.Any]] = []
+    data = forge_info.client.graphql(query, variables)["repository"]
+    prs: list[client.PrJson] = []
     for a in aliases:
         prs.extend(data[a]["nodes"])
     return prs
@@ -61,7 +59,7 @@ def log_cmd(remote: str, args: list[str]) -> str:
 
     def _pr_ids_to_crs(pr_ids: list[str]) -> dict[str, cr.CodeReview]:
         owner, name = forge_info.project_id.split("/")
-        prs = _get_prs_by_branch(forge_info.client, owner, name, _branch_names(pr_ids))
+        prs = _get_prs_by_branch(forge_info, owner, name, _branch_names(pr_ids))
         return {pr["headRefName"]: util.parse_cr(pr) for pr in prs}
 
     return jj.log_with_annotations(

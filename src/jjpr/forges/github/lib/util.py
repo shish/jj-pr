@@ -3,6 +3,7 @@ import typing as t
 import httpx
 
 from ....utils import cr
+from . import client
 
 # GraphQL selection for a PullRequest's status checks, based on the last commit.
 STATUS_CHECK_FIELDS = """
@@ -50,43 +51,52 @@ REVIEW_THREAD_FIELDS = """
 """
 
 
-def flatten_checks(pr: dict[str, t.Any]) -> list[dict[str, t.Any]]:
+def flatten_checks(pr: client.PrJson) -> list[cr.Check]:
     """
     Turn the nested `commits.nodes[0].commit.statusCheckRollup.contexts.nodes`
     structure (queried via STATUS_CHECK_FIELDS) into a flat list of
     {name, conclusion, detailsUrl} dicts, merging the CheckRun and
     StatusContext variants into a single shape.
     """
+    conclusion2state = {
+        "SUCCESS": cr.CheckState.PASS,
+        "PENDING": cr.CheckState.IN_PROGRESS,
+        "FAILURE": cr.CheckState.FAIL,
+    }
+
     contexts: list[dict[str, t.Any]] = []
-    commit_nodes = pr.get("commits", {}).get("nodes", [])
-    if commit_nodes:
+    if commit_nodes := pr.get("commits", {}).get("nodes", []):
         rollup = commit_nodes[0]["commit"].get("statusCheckRollup")
         if rollup:
             contexts = rollup["contexts"]["nodes"]
 
-    checks: list[dict[str, t.Any]] = []
+    checks: list[cr.Check] = []
     for context in contexts:
         if context["__typename"] == "CheckRun":
             checks.append(
-                {
-                    "name": context["name"],
-                    "conclusion": context.get("conclusion"),
-                    "detailsUrl": context.get("detailsUrl"),
-                }
+                cr.Check(
+                    name=context["name"],
+                    state=conclusion2state.get(
+                        str(context.get("conclusion")), cr.CheckState.OTHER
+                    ),
+                    url=context.get("detailsUrl"),
+                )
             )
         if context["__typename"] == "StatusContext":
             checks.append(
-                {
-                    "name": context["context"],
-                    "conclusion": context.get("state"),
-                    "detailsUrl": context.get("targetUrl"),
-                }
+                cr.Check(
+                    name=context["context"],
+                    state=conclusion2state.get(
+                        str(context.get("state")), cr.CheckState.OTHER
+                    ),
+                    url=context.get("targetUrl"),
+                )
             )
     return checks
 
 
 def pr2state(
-    pr: dict[str, t.Any],
+    pr: client.PrJson,
 ) -> cr.ReviewState:
     is_draft = pr["isDraft"]
     reviews = pr["reviews"]["nodes"]
@@ -116,29 +126,17 @@ def pr2state(
     return cr.ReviewState(display_state, color=color)
 
 
-def count_unresolved(pr: dict[str, t.Any]) -> int:
+def count_unresolved(pr: client.PrJson) -> int:
     threads = pr.get("reviewThreads", {}).get("nodes", [])
     return sum(1 for thread in threads if not thread.get("isResolved", True))
 
 
-def parse_cr(pr: dict[str, t.Any]) -> cr.CodeReview:
-    conclusion2state = {
-        "SUCCESS": cr.CheckState.PASS,
-        "PENDING": cr.CheckState.IN_PROGRESS,
-        "FAILURE": cr.CheckState.FAIL,
-    }
+def parse_cr(pr: client.PrJson) -> cr.CodeReview:
     return cr.CodeReview(
         cr_id="#" + str(pr["number"]),
         title=pr["title"],
         url=httpx.URL(pr["url"]),
         state=pr2state(pr),
-        checks=[
-            cr.Check(
-                name=check["name"],
-                state=conclusion2state.get(check["conclusion"], cr.CheckState.OTHER),
-                url=check["detailsUrl"],
-            )
-            for check in flatten_checks(pr)
-        ],
+        checks=flatten_checks(pr),
         unresolved_comments=count_unresolved(pr),
     )
