@@ -4,9 +4,7 @@ import typing as t
 import httpx
 
 from ...utils import cr
-from . import _util
-from ._client import GitHubClient
-from ._info import get_forge_info
+from .lib import client, info, util
 
 log = logging.getLogger(__name__)
 
@@ -20,8 +18,8 @@ _QUERY = f"""
           state
           url
           isDraft
-          {_util.STATUS_CHECK_FIELDS}
-          {_util.REVIEW_FIELDS}
+          {util.STATUS_CHECK_FIELDS}
+          {util.REVIEW_FIELDS}
         }}
       }}
       pageInfo {{
@@ -33,7 +31,7 @@ _QUERY = f"""
 """
 
 
-def _search_prs(client: GitHubClient, project_id: str) -> list[dict[str, t.Any]]:
+def _search_prs(client: client.GitHubClient, project_id: str) -> list[dict[str, t.Any]]:
     prs: list[dict[str, t.Any]] = []
     end_cursor = None
     q = f"repo:{project_id} author:@me state:open type:pr"
@@ -52,9 +50,9 @@ def _search_prs(client: GitHubClient, project_id: str) -> list[dict[str, t.Any]]
 
 
 def list_cmd(remote: str) -> list[cr.CodeReview]:
-    f = get_forge_info(remote)
-    log.info(f"Listing PRs for {f.remote_url} ({f.project_id})")
-    prs = _search_prs(f.client, f.project_id)
+    forge_info = info.get_forge_info(remote)
+    log.info(f"Listing PRs for {forge_info.remote_url} ({forge_info.project_id})")
+    prs = _search_prs(forge_info.client, forge_info.project_id)
 
     crs: list[cr.CodeReview] = []
     c2c = {
@@ -69,14 +67,14 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
                 color=c2c.get(check["conclusion"], "normal"),
                 url=check["detailsUrl"],
             )
-            for check in _util.flatten_checks(pr)
+            for check in util.flatten_checks(pr)
         ]
 
         crs.append(
             cr.CodeReview(
                 cr_id="#" + str(pr["number"]),
                 title=cr.Title(pr["title"], url=httpx.URL(pr["url"])),
-                state=_util.pr2state(pr),
+                state=util.pr2state(pr),
                 checks=checks,
                 blockers=[],
             )

@@ -5,7 +5,6 @@ import httpx
 from ..utils import git
 from . import base
 
-
 _REMOTE_URL = httpx.URL("https://example.com/dummy.git")
 
 

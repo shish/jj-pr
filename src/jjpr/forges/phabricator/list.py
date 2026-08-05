@@ -4,26 +4,24 @@ import typing as t
 import httpx
 
 from ...utils import cr
-from ._client import PhabricatorClient, PhID
-from ._info import get_forge_info
-from ._util import callsign_to_phid, check_color, colour_state
+from .lib import client, info, util
 
 log = logging.getLogger(__name__)
 
 
 def list_cmd(remote: str) -> list[cr.CodeReview]:
-    forge = get_forge_info(remote)
-    log.info(f"Listing diffs for {forge.remote_url} ({forge.project_id})")
-    revs = _my_open_crs(forge.client, forge.project_id)
+    forge_info = info.get_forge_info(remote)
+    log.info(f"Listing diffs for {forge_info.remote_url} ({forge_info.project_id})")
+    revs = _my_open_crs(forge_info)
     checks_by_diff = _get_checks(
-        forge.client, forge.forge_url, [rev["fields"]["diffPHID"] for rev in revs]
+        forge_info, [rev["fields"]["diffPHID"] for rev in revs]
     )
     crs: list[cr.CodeReview] = []
     for rev in revs:
         checks = [
             cr.Blocker(
                 name=check["name"],
-                color=check_color(check["status"]),
+                color=util.check_color(check["status"]),
                 url=check["url"],
             )
             for check in checks_by_diff.get(rev["fields"]["diffPHID"], [])
@@ -35,7 +33,7 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
                     text=rev["fields"]["title"],
                     url=httpx.URL(rev["fields"]["uri"]),
                 ),
-                state=colour_state(
+                state=util.colour_state(
                     state=rev["fields"]["status"]["name"],
                     url=httpx.URL(rev["fields"]["uri"]),
                 ),
@@ -46,13 +44,15 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
     return crs
 
 
-def _my_open_crs(client: PhabricatorClient, callsign: str) -> list[dict[str, t.Any]]:
-    myPHID = client.call("user.whoami")["phid"]
-    revs = client.call(
+def _my_open_crs(forge_info: info.ForgeInfo) -> list[dict[str, t.Any]]:
+    myPHID = forge_info.client.call("user.whoami")["phid"]
+    revs = forge_info.client.call(
         "differential.revision.search",
         constraints={
             "authorPHIDs": [myPHID],
-            "repositoryPHIDs": [callsign_to_phid(client, callsign)],
+            "repositoryPHIDs": [
+                util.callsign_to_phid(forge_info.client, forge_info.project_id)
+            ],
             "statuses": [
                 "draft",
                 "needs-review",
@@ -66,8 +66,8 @@ def _my_open_crs(client: PhabricatorClient, callsign: str) -> list[dict[str, t.A
 
 
 def _get_checks(
-    client: PhabricatorClient, base_url: httpx.URL, diff_phids: list[PhID]
-) -> dict[PhID, list[dict[str, t.Any]]]:
+    forge_info: info.ForgeInfo, diff_phids: list[client.PhID]
+) -> dict[client.PhID, list[dict[str, t.Any]]]:
     """Fetch Harbormaster build/check statuses for a set of diffs.
 
     Returns a mapping of diff PHID to a list of {name, status, url}
@@ -77,7 +77,7 @@ def _get_checks(
     if not diff_phids:
         return {}
 
-    buildables = client.call(
+    buildables = forge_info.client.call(
         "harbormaster.buildable.search",
         constraints={"objectPHIDs": diff_phids},
     )["data"]
@@ -87,12 +87,12 @@ def _get_checks(
     buildable_phid_to_diff_phid = {
         buildable["phid"]: buildable["fields"]["objectPHID"] for buildable in buildables
     }
-    builds = client.call(
+    builds = forge_info.client.call(
         "harbormaster.build.search",
         constraints={"buildables": list(buildable_phid_to_diff_phid)},
     )["data"]
 
-    checks: dict[PhID, list[dict[str, t.Any]]] = {}
+    checks: dict[client.PhID, list[dict[str, t.Any]]] = {}
     for build in builds:
         diff_phid = buildable_phid_to_diff_phid.get(build["fields"]["buildablePHID"])
         if not diff_phid:
@@ -101,7 +101,7 @@ def _get_checks(
             {
                 "name": build["fields"]["name"],
                 "status": build["fields"]["buildStatus"]["value"],
-                "url": base_url.join(f"/harbormaster/build/{build['id']}/"),
+                "url": forge_info.forge_url.join(f"/harbormaster/build/{build['id']}/"),
             }
         )
     return checks

@@ -2,8 +2,8 @@ import typing as t
 
 import httpx
 
-from ...utils import cr
-from ._client import PhabricatorClient, PhID
+from ....utils import cr
+from .client import PhabricatorClient, PhID
 
 
 def callsign_to_phid(client: PhabricatorClient, callsign: str) -> PhID:

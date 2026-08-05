@@ -2,7 +2,7 @@ import logging
 import typing as t
 
 from ...utils import jj
-from ._info import get_forge_info
+from .lib import client, info
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ def _get_descendants_bookmarks(root: jj.ChangeID) -> list[str]:
 
 
 def _find_pr_base_for_stack(
-    client, owner: str, name: str, bookmarks: list[str]
+    client: client.GitHubClient, owner: str, name: str, bookmarks: list[str]
 ) -> str | None:
     """
     Given a list of bookmarks from descendant commits, extract branch names and query
@@ -77,27 +77,29 @@ def _find_pr_base_for_stack(
 
 
 def rebase_cmd(remote: str, change_ids: list[jj.ChangeID]) -> None:
-    f = get_forge_info(remote)
+    forge_info = info.get_forge_info(remote)
     jj.git_fetch(all_remotes=True)
 
-    owner, name = f.project_id.split("/")
+    owner, name = forge_info.project_id.split("/")
 
     for root in change_ids:
         # Check if any descendant of this root has a PR
         bookmarks = _get_descendants_bookmarks(root)
 
         # Try to find the merge target from the PR
-        merge_target = _find_pr_base_for_stack(f.client, owner, name, bookmarks)
+        merge_target = _find_pr_base_for_stack(
+            forge_info.client, owner, name, bookmarks
+        )
 
         # If we found a merge target, use it; otherwise fall back to default
         if merge_target:
-            base = f"{merge_target}@{f.remote}"
+            base = f"{merge_target}@{forge_info.remote}"
             log.info(
                 f"Found PR merge target '{merge_target}' for {root}, "
                 f"rebasing descendants onto {base}"
             )
         else:
-            base = f"{f.default_merge_target}@{f.remote}"
+            base = f"{forge_info.default_merge_target}@{forge_info.remote}"
             log.info(
                 f"No PR found for descendants of {root}, "
                 f"rebasing onto default target {base}"

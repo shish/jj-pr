@@ -4,9 +4,9 @@ from pathlib import Path
 
 import httpx
 
-from ...utils import git
-from ..base import ForgeInfo
-from ._client import PhabricatorClient
+from ....utils import git
+from ...base import ForgeInfo
+from .client import PhabricatorClient
 
 log = logging.getLogger(__name__)
 

@@ -2,8 +2,8 @@ import typing as t
 
 import httpx
 
-from ...utils import cr
-from ._client import GerritClient
+from ....utils import cr
+from .client import GerritClient
 
 
 def get_checks(client: GerritClient, change_number: int) -> list[dict[str, t.Any]]:

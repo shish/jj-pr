@@ -1,16 +1,16 @@
 import logging
 
 from ...utils import exec
-from ._info import get_forge_info
+from .lib import info
 
 log = logging.getLogger(__name__)
 
 
 def download_cmd(remote: str, identifier: str) -> None:
-    f = get_forge_info(remote)
+    forge_info = info.get_forge_info(remote)
     log.info(f"Fetching Gerrit change {identifier}")
     # Query API to get the latest patch set number
-    change_data_response = f.client.get(
+    change_data_response = forge_info.client.get(
         f"changes/{identifier}?o=CURRENT_REVISION"
     ).json()
 
@@ -26,6 +26,6 @@ def download_cmd(remote: str, identifier: str) -> None:
         return
 
     # Fetch the latest patch set
-    remote_id = f"refs/remotes/{f.remote}/change-{identifier}"
-    exec.run("git", "fetch", f.remote, f"{current_rev}:{remote_id}")
+    remote_id = f"refs/remotes/{forge_info.remote}/change-{identifier}"
+    exec.run("git", "fetch", forge_info.remote, f"{current_rev}:{remote_id}")
     exec.run("git", "checkout", remote_id)

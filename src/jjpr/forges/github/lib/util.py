@@ -2,7 +2,7 @@ import typing as t
 
 import httpx
 
-from ...utils import cr
+from ....utils import cr
 
 # GraphQL selection for a PullRequest's status checks, based on the last commit.
 STATUS_CHECK_FIELDS = """

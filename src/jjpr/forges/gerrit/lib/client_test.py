@@ -5,8 +5,8 @@ from unittest import mock
 import httpx
 import pytest
 
-from ...utils import exc, netrc
-from ._client import GerritClient
+from ....utils import exc, netrc
+from .client import GerritClient
 
 log = logging.getLogger(__name__)
 

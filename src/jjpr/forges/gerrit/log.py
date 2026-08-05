@@ -2,20 +2,19 @@ import re
 import typing as t
 
 from ...utils import jj, text
-from ._info import get_forge_info
-from ._util import colour_state, get_checks
+from .lib import info, util
 
 
 def log_cmd(remote: str, args: list[str]) -> str:
-    f = get_forge_info(remote)
+    forge_info = info.get_forge_info(remote)
 
     def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
         id_to_state: dict[str, str] = {}
         # Fetch "my open reviews and their status" from gerrit,
         # index them by change ID. FIXME: "my open reviews" is
         # a poor approxmation of "the changes visible in jj log"
-        query = f"owner:self+status:open+project:{f.project_id}"
-        changes_response = f.client.get(
+        query = f"owner:self+status:open+project:{forge_info.project_id}"
+        changes_response = forge_info.client.get(
             f"changes/?q={query}&o=SUBMIT_REQUIREMENTS&o=DETAILED_ACCOUNTS"
         ).json()
         for change in changes_response:
@@ -24,13 +23,13 @@ def log_cmd(remote: str, args: list[str]) -> str:
                 if req["status"] not in {"SATISFIED", "NOT_APPLICABLE"}:
                     req_name = re.sub("[^A-Z]+", "", req["name"])
                     blockers.append(req_name)
-            state = colour_state(
+            state = util.colour_state(
                 is_private=change.get("is_private", False),
                 work_in_progress=change.get("work_in_progress", False),
                 blockers=len(blockers) > 0,
-                url=f.forge_url.join(f"/c/{change['_number']}"),
+                url=forge_info.forge_url.join(f"/c/{change['_number']}"),
             )
-            checks = get_checks(f.client, change["_number"])
+            checks = util.get_checks(forge_info.client, change["_number"])
             id_to_state[str(change["change_id"])] = text.rich_str(
                 state, *[_check_to_str(check) for check in checks]
             )

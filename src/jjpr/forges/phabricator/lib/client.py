@@ -5,7 +5,7 @@ from pathlib import Path
 
 import httpx
 
-from ...utils import exc
+from ....utils import exc
 
 log = logging.getLogger(__name__)
 

@@ -2,9 +2,9 @@ import re
 
 import httpx
 
-from ...utils import git, jj
-from ..base import ForgeInfo
-from ._client import GerritClient
+from ....utils import git, jj
+from ...base import ForgeInfo
+from .client import GerritClient
 
 
 def get_forge_info(remote: str) -> ForgeInfo[GerritClient]:

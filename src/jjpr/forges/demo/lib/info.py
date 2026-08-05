@@ -1,6 +1,6 @@
 import httpx
 
-from ..base import ForgeInfo
+from ...base import ForgeInfo
 
 
 def get_forge_info(remote: str) -> ForgeInfo[None]:

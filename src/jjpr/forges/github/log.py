@@ -3,16 +3,14 @@ import typing as t
 import httpx
 
 from ...utils import cr, jj, text
-from . import _util
-from ._client import GitHubClient
-from ._info import get_forge_info
+from .lib import client, info, util
 
 _PR_FIELDS = f"""
   url
   isDraft
   headRefName
-  {_util.STATUS_CHECK_FIELDS}
-  {_util.REVIEW_FIELDS}
+  {util.STATUS_CHECK_FIELDS}
+  {util.REVIEW_FIELDS}
 """
 
 
@@ -28,7 +26,7 @@ def _branch_names(pr_ids: list[str]) -> list[str]:
 
 
 def _get_prs_by_branch(
-    client: GitHubClient, owner: str, name: str, branches: list[str]
+    client: client.GitHubClient, owner: str, name: str, branches: list[str]
 ) -> list[dict[str, t.Any]]:
     if not branches:
         return []
@@ -58,16 +56,16 @@ def _get_prs_by_branch(
 
 
 def log_cmd(remote: str, args: list[str]) -> str:
-    f = get_forge_info(remote)
+    forge_info = info.get_forge_info(remote)
 
     def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
         id_to_state: dict[str, str] = {}
-        owner, name = f.project_id.split("/")
-        prs = _get_prs_by_branch(f.client, owner, name, _branch_names(pr_ids))
+        owner, name = forge_info.project_id.split("/")
+        prs = _get_prs_by_branch(forge_info.client, owner, name, _branch_names(pr_ids))
 
         for pr in prs:
             state = text.rich_str(
-                _util.pr2state(pr),
+                util.pr2state(pr),
                 *[
                     cr.Blocker(
                         name={
@@ -82,12 +80,12 @@ def log_cmd(remote: str, args: list[str]) -> str:
                         }.get(check["conclusion"], "normal"),
                         url=httpx.URL(check["detailsUrl"]),
                     )
-                    for check in _util.flatten_checks(pr)
+                    for check in util.flatten_checks(pr)
                 ],
             )
             id_to_state[pr["headRefName"]] = state
             id_to_state[pr["headRefName"] + "*"] = state
-            id_to_state[pr["headRefName"] + "@" + f.remote] = state
+            id_to_state[pr["headRefName"] + "@" + forge_info.remote] = state
         return id_to_state
 
     return jj.log_with_annotations(

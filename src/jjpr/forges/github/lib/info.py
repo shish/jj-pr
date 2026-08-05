@@ -1,9 +1,9 @@
 import re
 import typing as t
 
-from ...utils import git
-from ..base import ForgeInfo
-from ._client import GitHubClient
+from ....utils import git
+from ...base import ForgeInfo
+from .client import GitHubClient
 
 
 def get_forge_info(remote: str) -> ForgeInfo[GitHubClient]:

@@ -13,7 +13,7 @@ import tenacity as tc
 
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import netrc
-from ._client import PhabricatorClient
+from .lib import client
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ def url() -> httpx.URL:
 def session(
     tmp_home: Path,
     url: httpx.URL,
-) -> t.Generator[PhabricatorClient, None, None]:
+) -> t.Generator[client.PhabricatorClient, None, None]:
     # configure .arcrc
     phabricator_token = os.getenv("JJPR_TEST_PHABRICATOR_API_TOKEN")
     if not phabricator_token:
@@ -48,23 +48,23 @@ def session(
     netrc.write(url.host, "admin", vcs_password)
 
     # configure http client with persistent token
-    client = PhabricatorClient(url)
+    sess = client.PhabricatorClient(url)
 
     # check that the client works
     if not shutil.which("arc"):
         pytest.skip("`arc` command not found, skipping tests")
     try:
-        data = client.call("user.whoami")
+        data = sess.call("user.whoami")
         assert data["userName"] == "admin"
     except Exception as e:
         pytest.skip(f"Phabricator server seems broken, skipping tests: {e}")
-    yield client
+    yield sess
 
 
 @pytest.fixture
 def repo(
     url: httpx.URL,
-    session: PhabricatorClient,
+    session: client.PhabricatorClient,
     request: pytest.FixtureRequest,
 ) -> t.Generator[httpx.URL, None, None]:
     rand = "".join(random.choices(string.ascii_lowercase, k=4))

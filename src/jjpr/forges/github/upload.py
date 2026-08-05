@@ -2,7 +2,7 @@ import logging
 import re
 
 from ...utils import exec, git, jj
-from ._info import get_forge_info
+from .lib import info
 
 log = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ def upload_cmd(
     message: str | None = None,
     pre_commit: bool = True,
 ) -> None:
-    f = get_forge_info(remote)
+    forge_info = info.get_forge_info(remote)
     changes = jj.change_id(ref) if ref else jj.pushable_stack()
 
     # if a change in the stack has a branch name that starts with "pr/":
@@ -27,7 +27,7 @@ def upload_cmd(
         log.info(f"Updating existing PR branch: {pr_branch}")
         with jj.with_new(changes[-1]):
             jj.bookmark_advance(pr_branch, to=changes[-1])
-            jj.git_push(remote=f.remote, bookmark=pr_branch)
+            jj.git_push(remote=forge_info.remote, bookmark=pr_branch)
     else:
         # - create a new branch named "pr/<sanitized-title>" where
         #   <sanitized-title> is a name based on the description of
@@ -44,7 +44,7 @@ def upload_cmd(
         log.info(f"Creating new PR branch: {pr_branch}")
         with jj.with_new(changes[-1]):
             jj.bookmark_create(pr_branch, r=changes[-1])
-            jj.git_push(remote=f.remote, bookmark=pr_branch)
+            jj.git_push(remote=forge_info.remote, bookmark=pr_branch)
             base = git.get_merge_target()
             args = [
                 "gh",

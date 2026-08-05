@@ -1,7 +1,7 @@
 import logging
 
 from ...utils import jj
-from ._info import get_forge_info
+from .lib import info
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ def upload_cmd(
     message: str | None = None,
     pre_commit: bool = True,
 ) -> None:
-    f = get_forge_info(remote)
+    forge_info = info.get_forge_info(remote)
     if ref:
         change_id = jj.change_id(ref)
         range = f"{change_id}::{change_id}"
@@ -24,5 +24,5 @@ def upload_cmd(
         r=range,
         wip=draft,
         message=message,
-        remote_branch=f.default_merge_target,
+        remote_branch=forge_info.default_merge_target,
     )

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ._info import get_forge_info
+from .info import get_forge_info
 
 
 class TestInfo:

@@ -1,7 +1,7 @@
 import typing as t
 
 from ...utils import cr
-from ._info import get_forge_info
+from .lib import info
 
 # A handful of canned CRs, chosen to show off every state/check/blocker
 # combination that `jj pr list` knows how to render.
@@ -38,13 +38,13 @@ _DEMO_CRS: list[dict[str, t.Any]] = [
 
 
 def list_cmd(remote: str) -> list[cr.CodeReview]:
-    f = get_forge_info(remote)
+    forge_info = info.get_forge_info(remote)
     return [
         cr.CodeReview(
             cr_id=demo["cr_id"],
             title=cr.Title(
                 demo["title"],
-                url=f.forge_url.join(demo["cr_id"].lstrip("#")),
+                url=forge_info.forge_url.join(demo["cr_id"].lstrip("#")),
             ),
             state=cr.State(demo["state"][0], color=demo["state"][1]),
             checks=[cr.Blocker(name, color=color) for name, color in demo["checks"]],

@@ -9,7 +9,7 @@ import pytest
 
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import netrc
-from ._client import GerritClient
+from .lib import client
 
 
 @pytest.fixture(scope="class")
@@ -22,7 +22,7 @@ def url() -> httpx.URL:
 def session(
     tmp_home: Path,
     url: httpx.URL,
-) -> t.Generator[GerritClient, None, None]:
+) -> t.Generator[client.GerritClient, None, None]:
     # configure .netrc
     gerrit_token = os.getenv("JJPR_TEST_GERRIT_API_TOKEN")
     if not gerrit_token:
@@ -30,23 +30,23 @@ def session(
 
     netrc.write(url.host, "admin", gerrit_token)
 
-    client = GerritClient(url)
+    sess = client.GerritClient(url)
 
     try:
         # check that the client works
         try:
-            client.get(url)
+            sess.get(url)
         except Exception as e:
             pytest.skip(f"Gerrit server seems broken, skipping tests: {e}")
-        yield client
+        yield sess
     finally:
-        client.close()
+        sess.close()
 
 
 @pytest.fixture
 def repo(
     url: httpx.URL,
-    session: GerritClient,
+    session: client.GerritClient,
 ) -> t.Generator[httpx.URL, None, None]:
     rand = "".join(random.choices(string.ascii_lowercase, k=4))
     repo_name = f"ztst-gerr-{rand}"

@@ -5,7 +5,7 @@ import typing as t
 
 import httpx
 
-from ...utils import exc, netrc
+from ....utils import exc, netrc
 
 log = logging.getLogger(__name__)
 

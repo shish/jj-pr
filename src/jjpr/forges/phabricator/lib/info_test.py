@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from ...conftest import run_cmd
-from ._info import get_forge_info
+from ....conftest import run_cmd
+from .info import get_forge_info
 
 
 class TestInfo:
