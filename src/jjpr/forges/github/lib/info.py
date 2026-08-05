@@ -3,11 +3,11 @@ import typing as t
 
 from ....utils import git
 from ...base import ForgeInfo
-from .client import GitHubClient
+from . import client
 
 
 @t.final
-class GitHubInfo(ForgeInfo[GitHubClient]):
+class GitHubInfo(ForgeInfo[client.GitHubClient]):
     def __init__(self, remote: str):
         super().__init__(remote)
 
@@ -17,7 +17,7 @@ class GitHubInfo(ForgeInfo[GitHubClient]):
             self.forge_url = self.remote_url.copy_with(
                 scheme="https", username=None, port=None, path=None
             )
-        self.client = GitHubClient(self.forge_url)
+        self.client = client.GitHubClient(self.forge_url)
 
         if match := re.match("^/([^/]+?/[^/]+?)(\\.git)?$", self.remote_url.path):
             self.project_id = match.group(1)
@@ -39,7 +39,7 @@ def get_forge_info(remote: str) -> GitHubInfo:
     return GitHubInfo(remote)
 
 
-def _get_repo_info(client: GitHubClient, project_id: str) -> dict[str, t.Any]:
+def _get_repo_info(client: client.GitHubClient, project_id: str) -> client.RepoJson:
     query = """
       fragment repo on Repository {
         id

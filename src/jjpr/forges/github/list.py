@@ -1,8 +1,7 @@
 import logging
-import typing as t
 
 from ...utils import cr
-from .lib import info, util
+from .lib import client, info, util
 
 log = logging.getLogger(__name__)
 
@@ -34,11 +33,11 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
     forge_info = info.get_forge_info(remote)
     log.info(f"Listing PRs on {forge_info.remote_url} ({forge_info.project_id})")
 
-    prs: list[dict[str, t.Any]] = []
+    prs: list[client.PrJson] = []
     end_cursor = None
     q = f"repo:{forge_info.project_id} author:@me state:open type:pr"
     while True:
-        variables: dict[str, t.Any] = {
+        variables: client.GqlVars = {
             "q": q,
             "limit": 100,
             "endCursor": end_cursor,

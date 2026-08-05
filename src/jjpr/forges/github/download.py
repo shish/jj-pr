@@ -1,5 +1,4 @@
 import logging
-import typing as t
 
 from ...utils import jj
 from .lib import client, info
@@ -12,7 +11,9 @@ def download_cmd(remote: str, identifier: str) -> None:
     # GH_DEBUG=api gh pr checkout 13
     log.info(f"Downloading PR {identifier} from {forge_info.remote_url}")
     owner, name = forge_info.project_id.split("/")
-    pr_info = _get_pr_info(forge_info.client, owner, name, int(identifier.lstrip("#")))
+    pr_info = _get_pr_info(
+        forge_info.client, owner, name, client.PrNum(int(identifier.lstrip("#")))
+    )
     branch_name = pr_info["headRefName"]
     jj.git_fetch(remote=forge_info.remote)
     jj.bookmark_track(branch_name, remote=forge_info.remote)
@@ -20,8 +21,8 @@ def download_cmd(remote: str, identifier: str) -> None:
 
 
 def _get_pr_info(
-    client: client.GitHubClient, owner: str, name: str, pr_number: int
-) -> dict[str, t.Any]:
+    client: client.GitHubClient, owner: str, name: str, pr_number: client.PrNum
+) -> client.PrJson:
     query = """
       query GetPullRequest($owner: String!, $name: String!, $number: Int!) {
         repository(owner: $owner, name: $name) {

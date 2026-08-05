@@ -8,6 +8,10 @@ import httpx
 
 from ....utils import exc, netrc
 
+PrNum = t.NewType("PrNum", int)
+PrJson = t.NewType("PrJson", dict[str, t.Any])
+RepoJson = t.NewType("RepoJson", dict[str, t.Any])
+GqlVars = dict[str, t.Any]
 log = logging.getLogger(__name__)
 
 
@@ -53,7 +57,7 @@ class GitHubClient:
             "or authenticate with the gh CLI (`gh auth login`)"
         )
 
-    def graphql(self, query: str, variables: t.Mapping[str, str | int]):
+    def graphql(self, query: str, variables: GqlVars):
         data: dict[str, t.Any] = {"query": query}
         if variables:
             data["variables"] = variables

@@ -1,5 +1,4 @@
 import logging
-import typing as t
 
 from ...utils import jj
 from .lib import client, info
@@ -26,7 +25,7 @@ def _get_descendants_bookmarks(root: jj.ChangeId) -> list[str]:
 
 
 def _find_pr_base_for_stack(
-    client: client.GitHubClient, owner: str, name: str, bookmarks: list[str]
+    forge_info: info.GitHubInfo, owner: str, name: str, bookmarks: list[str]
 ) -> str | None:
     """
     Given a list of bookmarks from descendant commits, extract branch names and query
@@ -64,10 +63,10 @@ def _find_pr_base_for_stack(
         }}
       }}
     """
-    variables: dict[str, t.Any] = {"owner": owner, "name": name}
+    variables: client.GqlVars = {"owner": owner, "name": name}
     variables.update(zip(aliases, branches))
 
-    data = client.graphql(query, variables)["repository"]
+    data = forge_info.client.graphql(query, variables)["repository"]
     for a in aliases:
         prs = data[a]["nodes"]
         if prs:
@@ -91,9 +90,7 @@ def rebase_cmd(
         bookmarks = _get_descendants_bookmarks(root)
 
         # Try to find the merge target from the PR
-        merge_target = _find_pr_base_for_stack(
-            forge_info.client, owner, name, bookmarks
-        )
+        merge_target = _find_pr_base_for_stack(forge_info, owner, name, bookmarks)
 
         # If we found a merge target, use it; otherwise fall back to default (or skip)
         if merge_target:
