@@ -68,8 +68,6 @@ class CodeReview:
 def json_default(obj: t.Any) -> t.Any:
     if isinstance(obj, httpx.URL):
         return str(obj)
-    if hasattr(obj, "asdict") and callable(obj.asdict):
-        return obj.asdict()
     if hasattr(obj, "__dataclass_fields__"):
         return {
             field.name: getattr(obj, field.name)
