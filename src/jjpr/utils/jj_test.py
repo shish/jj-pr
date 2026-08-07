@@ -120,11 +120,6 @@ class TestDirectMappings:
                 "git", "push", "--remote", "origin", "--bookmark", "main", cap=False
             )
 
-    def test_log(self, repo_with_commits: Path):
-        output = jj.log_()
-        assert output is not None
-        assert isinstance(output, str)
-
     def test_rebase(self, repo_with_commits: Path):
         with mock.patch("jjpr.utils.jj.run") as mock_run:
             jj.rebase(d="trunk()", r="@")
@@ -262,7 +257,7 @@ class TestLogWithAnnotations:
             "│  initial import\n"
             "~\n"
         )
-        with mock.patch.object(jj, "log_", return_value=log_output):
+        with mock.patch.object(jj, "run", return_value=log_output):
             txt = jj.log_with_annotations(
                 [],
                 "commit.pr_id()",

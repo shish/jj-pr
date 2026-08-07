@@ -106,10 +106,6 @@ def git_push(remote: str, bookmark: str) -> None:
     run("git", "push", "--remote", remote, "--bookmark", bookmark, cap=False)
 
 
-def log_(*args) -> str:
-    return run("--ignore-working-copy", "log", *args, cap=True)
-
-
 def new(r: RevSet) -> None:
     run("new", "-r", r, cap=False)
 
@@ -262,12 +258,14 @@ def log_with_annotations(
     - Call `get_pr_states` to turn a list of PR IDs into a mapping of {PR ID: State}
     - Replace the PR IDs in the log output with their states
     """
-    logdata = log_(
+    logdata = run(
+        "log",
         "--color",
         "always",
         "--config",
         f"template-aliases.\"format_commit_labels(commit)\"='''\"JJPR:\"++{template}++\":JJPR\"'''",
         *args,
+        cap=True,
     )
     # remove empty annotations
     logdata = re.sub("JJPR::JJPR", "", logdata)
