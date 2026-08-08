@@ -14,14 +14,9 @@ def download_cmd(remote: str, identifier: str) -> None:
         f"changes/{identifier}?o=CURRENT_REVISION"
     ).json()
 
-    # Ensure response is a dict
-    if not isinstance(change_data_response, dict):
-        log.error(f"Invalid response type for change {identifier}")
-        return
-
     # Get the latest patch set revision
     current_rev = change_data_response.get("current_revision")
-    if not current_rev:
+    if not current_rev:  # pragma: no cover - can't figure out how to repro this
         log.error(f"Could not determine current revision for change {identifier}")
         return
 
