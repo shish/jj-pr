@@ -52,7 +52,9 @@ def _push_one(
         data["transactions"].extend(trs)
 
     # Create a diff
-    diff_phid = _push_change_to_differential(client, forge_info, change_id, pre_commit)
+    diff_phid = _push_change_to_differential_via_subprocess(
+        client, forge_info, change_id, pre_commit
+    )
     data["transactions"].append({"type": "update", "value": diff_phid})
 
     # Set parent diff if our parent commit contains a diff ID
@@ -105,7 +107,26 @@ def _get_parent_phids(
     return parent_phids
 
 
-def _push_change_to_differential(
+def _push_change_to_differential_via_subprocess(
+    client: client.PhabricatorClient,
+    forge_info: info.ForgeInfo[client.PhabricatorClient],
+    change_id: jj.ChangeId,
+    pre_commit: bool = True,
+) -> client.PhId:
+    with jj.with_edit(change_id):
+        exec.run("arc", "lint", "--apply-patches")
+    with jj.with_new(change_id):
+        text = exec.run("arc", "diff", "HEAD^", "--only", "--json")
+    # arc logs go to stdout...
+    diff_num = json.loads(text.splitlines()[-1])["diffID"]
+    diff_phid = client.call(
+        "differential.diff.search",
+        constraints={"ids": [diff_num]},
+    )["data"][0]["phid"]
+    return diff_phid
+
+
+def _push_change_to_differential_natively(
     client: client.PhabricatorClient,
     forge_info: info.ForgeInfo[client.PhabricatorClient],
     change_id: jj.ChangeId,
