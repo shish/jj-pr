@@ -79,22 +79,15 @@ def tmp_repo(tmp_home: Path) -> t.Generator[Path, None, None]:
 
 @pytest.fixture
 def repo_with_commits(tmp_repo: Path) -> t.Generator[Path, None, None]:
-    # Create initial commit - jj auto-tracks changes
-    Path("file1.txt").write_text("initial content")
-    run_cmd("jj", "commit", "-m", "Initial commit")
-
-    # Create commit 1
-    Path("file2.txt").write_text("commit 1 content")
+    Path("file1.txt").write_text("commit 1 content")
     run_cmd("jj", "commit", "-m", "Commit 1")
 
-    # Create commit 2
-    Path("file3.txt").write_text("commit 2 content")
-    run_cmd("jj", "commit", "-m", "Commit 2")
+    Path("file2.txt").write_text("commit 2 content")
     run_cmd("jj", "bookmark", "create", "feat/commit-2")
+    run_cmd("jj", "commit", "-m", "Commit 2")
 
-    # Create commit 3
-    Path("file4.txt").write_text("commit 3 content")
-    run_cmd("jj", "commit", "-m", "Commit 3")
+    Path("file3.txt").write_text("commit 3 content")
     run_cmd("jj", "bookmark", "create", "feat/commit-3")
+    run_cmd("jj", "commit", "-m", "Commit 3")
 
     yield tmp_repo
