@@ -78,12 +78,13 @@ def edit(r: ChangeId) -> None:
 
 
 def gerrit_upload(
+    remote: str,
     r: str,
     wip: bool = False,
     message: str | None = None,
     remote_branch: str | None = None,
 ) -> None:
-    args = ["gerrit", "upload", "-r", r]
+    args = ["gerrit", "upload", "--remote", remote, "-r", r]
     if wip:
         args.append("--wip")
     if message:

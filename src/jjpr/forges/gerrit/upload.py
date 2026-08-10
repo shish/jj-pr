@@ -21,6 +21,7 @@ def upload_cmd(
         range = jj.closest_work()
     log.info(f"Pushing {range} to gerrit")
     jj.gerrit_upload(
+        remote=remote,
         r=range,
         wip=draft,
         message=message,

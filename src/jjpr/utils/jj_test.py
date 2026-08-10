@@ -88,16 +88,21 @@ class TestDirectMappings:
     def test_gerrit_upload_basic(self, repo_with_commits: Path):
         change_id = jj.change_id("@")
         with mock.patch("jjpr.utils.jj.run"):
-            jj.gerrit_upload(change_id)
+            jj.gerrit_upload(remote="origin", r=change_id)
 
     def test_gerrit_upload_with_all_options(self, repo_with_commits: Path):
         change_id = jj.change_id("@")
         with mock.patch("jjpr.utils.jj.run") as mock_run:
             jj.gerrit_upload(
-                change_id, wip=True, message="Test", remote_branch="refs/for/main"
+                remote="origin",
+                r=change_id,
+                wip=True,
+                message="Test",
+                remote_branch="refs/for/main",
             )
             mock_run.assert_called_once()
             args = mock_run.call_args[0]
+            assert "gerrit" in args
             assert "--wip" in args
             assert "--message" in args
             assert "Test" in args
