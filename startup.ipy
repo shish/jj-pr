@@ -1,8 +1,3 @@
 %load_ext autoreload
 %autoreload 2
-from jjpr.forges.demo.forge import Demo
-from jjpr.forges.detect import get_forge
 from jjpr.utils import exc, exec, git, jj, netrc, text
-
-f = get_forge("origin")
-d = Demo("origin")
