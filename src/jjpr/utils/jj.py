@@ -14,8 +14,8 @@ from . import exec, text
 log = logging.getLogger(__name__)
 
 # Type aliases
-ChangeID = str
 RevSet = str
+ChangeId = t.NewType("ChangeId", RevSet)
 
 
 class JjError(Exception):
@@ -68,11 +68,11 @@ def config_get(key: str) -> str | None:
         return None
 
 
-def describe(r: ChangeID, m: str) -> None:
+def describe(r: ChangeId, m: str) -> None:
     run("describe", "-r", r, "-m", m)
 
 
-def edit(r: RevSet) -> None:
+def edit(r: ChangeId) -> None:
     run("edit", "-r", r, cap=False)
 
 
@@ -127,21 +127,19 @@ def root() -> str:
 # change_info and wrappers
 
 
-def change_info(change_id: ChangeID, t: str) -> str:
+def change_info(change_id: ChangeId, t: str) -> str:
     return run("--ignore-working-copy", "log", "-r", change_id, "--no-graph", "-T", t)
 
 
-def parents_of(change_id: ChangeID) -> set[ChangeID]:
+def parents_of(change_id: ChangeId) -> set[ChangeId]:
     """
     List all parent change IDs for a given change ID
     """
-    output = change_info(
-        change_id, 'parents.map(|p| p.change_id().short()).join("\\n")'
-    )
-    return {p for p in output.split("\n") if p}
+    output = change_info(change_id, 'parents.map(|p| p.change_id()).join("\\n")')
+    return {ChangeId(p) for p in output.split("\n") if p}
 
 
-def files_in(change_id: ChangeID) -> set[str]:
+def files_in(change_id: ChangeId) -> set[str]:
     """
     List all files changed in a given change ID
     """
@@ -149,7 +147,7 @@ def files_in(change_id: ChangeID) -> set[str]:
     return {f for f in output.split("\n") if f}
 
 
-def description_of(change_id: ChangeID) -> str:
+def description_of(change_id: ChangeId) -> str:
     """
     Get the description of a commit
     """
@@ -157,7 +155,7 @@ def description_of(change_id: ChangeID) -> str:
     return output.strip()
 
 
-def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> set[str]:
+def branches_pointing_to(change_id: ChangeId, prefix: str = "") -> set[str]:
     """
     Find all branches pointing to a given change ID, optionally filtering by prefix
     """
@@ -165,7 +163,7 @@ def branches_pointing_to(change_id: ChangeID, prefix: str = "") -> set[str]:
     return {b for b in output.split("\n") if b and b.startswith(prefix)}
 
 
-def commit_id(change_id: ChangeID) -> str:
+def commit_id(change_id: ChangeId) -> str:
     """
     Get the commit ID for a given change ID
     """
@@ -176,7 +174,7 @@ def commit_id(change_id: ChangeID) -> str:
 # Extra helpers
 
 
-def change_ids(r: RevSet) -> list[ChangeID]:
+def change_ids(r: RevSet) -> list[ChangeId]:
     """
     Return a list of change IDs for the given revset, in reverse order (oldest first).
     """
@@ -187,13 +185,13 @@ def change_ids(r: RevSet) -> list[ChangeID]:
         "--no-graph",
         "--reversed",
         "-T",
-        'self.change_id().short() ++ "\\n"',
+        'self.change_id() ++ "\\n"',
         cap=True,
     ).split("\n")
-    return [line for line in lines if line]
+    return [ChangeId(line) for line in lines if line]
 
 
-def change_id(revset: RevSet) -> ChangeID:
+def change_id(revset: RevSet) -> ChangeId:
     """
     Return the change ID for the given revset (eg "@" or "trunk()");
     raise an error if it resolves to zero or multiple change IDs.
@@ -206,7 +204,7 @@ def change_id(revset: RevSet) -> ChangeID:
     return cs[0]
 
 
-def closest_work() -> ChangeID:
+def closest_work() -> ChangeId:
     """
     Return the closest non-empty mutable commit
 
@@ -215,7 +213,7 @@ def closest_work() -> ChangeID:
     return change_id("heads(::@ & mutable() & (~empty() | merges()))")
 
 
-def pushable_stack() -> list[ChangeID]:
+def pushable_stack() -> list[ChangeId]:
     """
     Find commits in the current stack (mutable commits from the trunk
     up to and including the current commit), with a commit message
@@ -228,7 +226,7 @@ def pushable_stack() -> list[ChangeID]:
     )
 
 
-def checkable_stack() -> list[ChangeID]:
+def checkable_stack() -> list[ChangeId]:
     """
     Find commits in the current stack (mutable commits from the trunk
     up to and including the current commit), with file changes

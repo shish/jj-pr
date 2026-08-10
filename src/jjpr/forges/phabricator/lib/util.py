@@ -3,10 +3,10 @@ import typing as t
 import httpx
 
 from ....utils import cr
-from .client import PhabricatorClient, PhID
+from .client import PhabricatorClient, PhId
 
 
-def callsign_to_phid(client: PhabricatorClient, callsign: str) -> PhID:
+def callsign_to_phid(client: PhabricatorClient, callsign: str) -> PhId:
     return client.call(
         "diffusion.repository.search",
         constraints={"callsigns": [callsign]},
@@ -14,8 +14,8 @@ def callsign_to_phid(client: PhabricatorClient, callsign: str) -> PhID:
 
 
 def get_checks(
-    client: PhabricatorClient, forge_url: httpx.URL, diff_phids: list[PhID]
-) -> dict[PhID, list[dict[str, t.Any]]]:
+    client: PhabricatorClient, forge_url: httpx.URL, diff_phids: list[PhId]
+) -> dict[PhId, list[dict[str, t.Any]]]:
     """Fetch Harbormaster build/check statuses for a set of diffs.
 
     Returns a mapping of diff PHID to a list of {name, status, url}
@@ -40,7 +40,7 @@ def get_checks(
         constraints={"buildables": list(buildable_phid_to_diff_phid)},
     )["data"]
 
-    checks: dict[PhID, list[dict[str, t.Any]]] = {}
+    checks: dict[PhId, list[dict[str, t.Any]]] = {}
     for build in builds:
         diff_phid = buildable_phid_to_diff_phid.get(build["fields"]["buildablePHID"])
         if not diff_phid:

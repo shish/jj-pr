@@ -7,7 +7,7 @@ from .lib import client, info
 log = logging.getLogger(__name__)
 
 
-def _get_descendants_bookmarks(root: jj.ChangeID) -> list[str]:
+def _get_descendants_bookmarks(root: jj.ChangeId) -> list[str]:
     """
     Find all bookmarks on any descendant commits of `root`.
     Returns a list of bookmark names (with @remote suffix if remote).
@@ -76,7 +76,7 @@ def _find_pr_base_for_stack(
     return None
 
 
-def rebase_cmd(remote: str, change_ids: list[jj.ChangeID]) -> None:
+def rebase_cmd(remote: str, change_ids: list[jj.ChangeId]) -> None:
     forge_info = info.get_forge_info(remote)
     jj.git_fetch(all_remotes=True)
 

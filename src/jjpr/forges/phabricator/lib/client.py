@@ -9,8 +9,8 @@ from ....utils import exc
 
 log = logging.getLogger(__name__)
 
-PhRev = int
-PhID = str
+PhRevNum = t.NewType("PhRevNum", int)
+PhId = t.NewType("PhId", str)
 PhTransactions = list[dict[str, t.Any]]
 
 

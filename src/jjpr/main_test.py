@@ -26,8 +26,8 @@ class TestPreCommitStack:
 
 class TestPreCommitChange:
     def test_pre_commit_change_ok(self, repo_with_commits: Path):
-        main._pre_commit_change("@-", "true")
+        main._pre_commit_change(jj.change_id("@-"), "true")
 
     def test_pre_commit_change_fail(self, repo_with_commits: Path):
         with pytest.raises(exc.UserError):
-            main._pre_commit_change("@-", "false")
+            main._pre_commit_change(jj.change_id("@-"), "false")

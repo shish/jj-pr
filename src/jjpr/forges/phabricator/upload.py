@@ -19,7 +19,7 @@ def upload_cmd(
     pre_commit: bool = True,
 ) -> None:
     forge_info = info.get_forge_info(remote)
-    changes = jj.change_id(ref) if ref else jj.pushable_stack()
+    changes = jj.change_ids(ref) if ref else jj.pushable_stack()
     log.info(f"Pushing {ref} ({changes})")
     for change_id in changes:
         _push_one(
@@ -29,7 +29,7 @@ def upload_cmd(
 
 def _push_one(
     forge_info: info.ForgeInfo[client.PhabricatorClient],
-    change_id: str,
+    change_id: jj.ChangeId,
     draft: bool = False,
     message: str | None = None,
     pre_commit: bool = False,
@@ -52,8 +52,8 @@ def _push_one(
         data["transactions"].extend(trs)
 
     # Create a diff
-    diff_data = _push_change_to_differential(client, forge_info, change_id, pre_commit)
-    data["transactions"].append({"type": "update", "value": diff_data["phid"]})
+    diff_phid = _push_change_to_differential(client, forge_info, change_id, pre_commit)
+    data["transactions"].append({"type": "update", "value": diff_phid})
 
     # Set parent diff if our parent commit contains a diff ID
     if parent_phids := _get_parent_phids(client, change_id):
@@ -81,7 +81,7 @@ def _push_one(
 
 
 def _parse_commit_message(
-    client: client.PhabricatorClient, change_id: jj.ChangeID
+    client: client.PhabricatorClient, change_id: jj.ChangeId
 ) -> client.PhTransactions:
     trs = client.call(
         "differential.parsecommitmessage",
@@ -97,8 +97,8 @@ def _parse_commit_message(
 
 
 def _get_parent_phids(
-    client: client.PhabricatorClient, change_id: jj.ChangeID
-) -> list[client.PhID]:
+    client: client.PhabricatorClient, change_id: jj.ChangeId
+) -> list[client.PhId]:
     parent_chids = jj.change_ids(f"{change_id}- & mutable()")
     parent_revs = [_change_to_revision(p) for p in parent_chids]
     parent_phids = [_revision_to_phid(client, p) for p in parent_revs if p is not None]
@@ -108,9 +108,9 @@ def _get_parent_phids(
 def _push_change_to_differential(
     client: client.PhabricatorClient,
     forge_info: info.ForgeInfo[client.PhabricatorClient],
-    change_id: jj.ChangeID,
+    change_id: jj.ChangeId,
     pre_commit: bool = True,
-) -> dict[str, t.Any]:
+) -> client.PhId:
     # Run pre-commit hooks if requested
     with jj.with_edit(change_id):
         lint_info = arc.lint.lint_current_diff(pre_commit)
@@ -126,7 +126,7 @@ def _push_change_to_differential(
         branch=forge_info.default_merge_target,
         sourceControlSystem="git",
         sourceControlPath="/",
-        sourceControlBaseRevision=jj.commit_id(f"{change_id}-"),
+        sourceControlBaseRevision=jj.commit_id(jj.change_id(f"{change_id}-")),
         creationMethod="jjpr",
         lintStatus=lint_info[0],
         unitStatus=unit_info[0],
@@ -157,7 +157,7 @@ def _push_change_to_differential(
 
     if staging_uri := _get_staging_url(client, forge_info.project_id):
         log.info(f"Pushing {change_id} to staging at {staging_uri}")
-        base_hash = jj.commit_id(f"{change_id}-")
+        base_hash = jj.commit_id(jj.change_id(f"{change_id}-"))
         diff_hash = jj.commit_id(change_id)
         exec.run(
             "git",
@@ -170,7 +170,7 @@ def _push_change_to_differential(
             cap=False,
         )
 
-    return diff_data
+    return diff_data["phid"]
 
 
 def _get_staging_url(client: client.PhabricatorClient, callsign: str) -> str | None:
@@ -184,16 +184,16 @@ def _get_staging_url(client: client.PhabricatorClient, callsign: str) -> str | N
     return repo_data.get("staging", {}).get("uri")
 
 
-def _change_to_revision(change_id: jj.ChangeID) -> client.PhRev | None:
+def _change_to_revision(change_id: jj.ChangeId) -> client.PhRevNum | None:
     d = jj.description_of(change_id)
     if m := re.search(r"Differential Revision:.*D(\d+)", d):
-        return int(m.group(1))
+        return client.PhRevNum(int(m.group(1)))
     return None
 
 
 def _revision_to_phid(
-    client: client.PhabricatorClient, revision: client.PhRev
-) -> client.PhID:
+    client: client.PhabricatorClient, revision: client.PhRevNum
+) -> client.PhId:
     result = client.call(
         "differential.revision.search",
         constraints={"ids": [revision]},
@@ -203,7 +203,7 @@ def _revision_to_phid(
     return result["data"][0]["phid"]
 
 
-def _callsign_to_phid(client: client.PhabricatorClient, callsign: str) -> client.PhID:
+def _callsign_to_phid(client: client.PhabricatorClient, callsign: str) -> client.PhId:
     return client.call(
         "diffusion.repository.search",
         constraints={"callsigns": [callsign]},

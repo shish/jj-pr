@@ -66,8 +66,8 @@ def _my_open_crs(forge_info: info.ForgeInfo) -> list[dict[str, t.Any]]:
 
 
 def _get_checks(
-    forge_info: info.ForgeInfo, diff_phids: list[client.PhID]
-) -> dict[client.PhID, list[dict[str, t.Any]]]:
+    forge_info: info.ForgeInfo, diff_phids: list[client.PhId]
+) -> dict[client.PhId, list[dict[str, t.Any]]]:
     """Fetch Harbormaster build/check statuses for a set of diffs.
 
     Returns a mapping of diff PHID to a list of {name, status, url}
@@ -92,7 +92,7 @@ def _get_checks(
         constraints={"buildables": list(buildable_phid_to_diff_phid)},
     )["data"]
 
-    checks: dict[client.PhID, list[dict[str, t.Any]]] = {}
+    checks: dict[client.PhId, list[dict[str, t.Any]]] = {}
     for build in builds:
         diff_phid = buildable_phid_to_diff_phid.get(build["fields"]["buildablePHID"])
         if not diff_phid:

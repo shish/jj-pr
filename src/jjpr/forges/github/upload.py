@@ -15,7 +15,7 @@ def upload_cmd(
     pre_commit: bool = True,
 ) -> None:
     forge_info = info.get_forge_info(remote)
-    changes = jj.change_id(ref) if ref else jj.pushable_stack()
+    changes = jj.change_ids(ref) if ref else jj.pushable_stack()
 
     # if a change in the stack has a branch name that starts with "pr/":
     branches = [jj.branches_pointing_to(change, prefix="pr/") for change in changes]

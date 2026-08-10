@@ -191,7 +191,7 @@ def pre_commit_command(
     _pre_commit_stack(changes)
 
 
-def _pre_commit_stack(changes: list[jj.ChangeID]) -> None:
+def _pre_commit_stack(changes: list[jj.ChangeId]) -> None:
     pc_cmd = Path(".git/hooks/pre-commit")
     if not pc_cmd.exists():
         log.info("No pre-commit configuration found, skipping")
@@ -203,7 +203,7 @@ def _pre_commit_stack(changes: list[jj.ChangeID]) -> None:
         _pre_commit_change(change_id, str(pc_cmd))
 
 
-def _pre_commit_change(change_id: str, pc_cmd: str) -> None:
+def _pre_commit_change(change_id: jj.ChangeId, pc_cmd: str) -> None:
     with jj.with_edit(change_id):
         files = jj.files_in(change_id)
         files = [f for f in files if Path(f).exists()]

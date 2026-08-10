@@ -192,7 +192,7 @@ class TestChangeId:
 
     def test_root(self, repo_with_commits: Path):
         change_id = jj.change_id("root()")
-        assert change_id == "zzzzzzzzzzzz"
+        assert change_id == "z" * 32
 
     def test_invalid_revset(self, tmp_repo: Path):
         with pytest.raises(jj.JjError):
@@ -337,7 +337,7 @@ class TestLogWithAnnotations:
         commit("Speed up integration tests", f"{accepted} {cross} {tick} {tick}")
         commit("Add more test coverage", f"{draft} {dot} {tick} {tick}")
 
-        jj.edit("@-")
+        jj.edit(jj.change_id("@-"))
         data = jj.log_with_annotations(
             [],
             "commit.description().first_line()",
@@ -410,11 +410,11 @@ class TestWithEdit:
 class TestWithNew:
     def test_creates_new_commit(self, repo_with_commits: Path):
         stack = jj.checkable_stack()
-        original_parents = jj.parents_of("@")
+        original_parents = jj.parents_of(jj.change_id("@"))
 
         assert len(stack) > 1
         target = stack[0]
         with jj.with_new(target):
-            assert jj.parents_of("@") == {target}
+            assert jj.parents_of(jj.change_id("@")) == {target}
 
-        assert jj.parents_of("@") == original_parents
+        assert jj.parents_of(jj.change_id("@")) == original_parents
