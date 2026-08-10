@@ -1,6 +1,7 @@
 import logging
 import os
 from pathlib import Path
+from textwrap import dedent
 from unittest import mock
 
 import pytest
@@ -356,65 +357,128 @@ class TestLogWithAnnotations:
 
 class TestWithEdit:
     def test_no_op_when_already_on_target(self, repo_with_commits: Path):
-        # be on a commit
-        original = jj.change_id("@")
+        jj.edit(jj.change_id("@-"))
+
+        assert jj.diagram() == dedent("""
+            @  Commit 3
+            o  Commit 2
+            o  Commit 1
+            +  Initial commit
+        """)
 
         # edit itself
-        with jj.with_edit(original):
-            during = jj.change_id("@")
-            assert during == original
+        with jj.with_edit(jj.change_id("@")):
+            assert jj.diagram() == dedent("""
+                @  Commit 3
+                o  Commit 2
+                o  Commit 1
+                +  Initial commit
+            """)
 
         # still on itself
-        after = jj.change_id("@")
-        assert after == original
+        assert jj.diagram() == dedent("""
+            @  Commit 3
+            o  Commit 2
+            o  Commit 1
+            +  Initial commit
+        """)
 
     def test_switches_to_commit(self, repo_with_commits: Path):
-        # start from a non-empty commit in the middle of the stack
-        stack = jj.pushable_stack()
-        assert len(stack) >= 3
-        run_cmd("jj", "edit", stack[-2])
-        original = jj.change_id("@")
+        jj.edit(jj.change_id("@--"))
 
-        # edit a different part of the stack
-        target = stack[-1]
-        with jj.with_edit(target):
-            assert jj.change_id("@") == target
+        # Start in the middle of the stack
+        assert jj.diagram() == dedent("""
+            o  Commit 3
+            @  Commit 2
+            o  Commit 1
+            +  Initial commit
+        """)
 
-        # return to the original part of the stack
-        assert jj.change_id("@") == original
+        # Edit the top of the stack
+        with jj.with_edit("@+"):
+            assert jj.diagram() == dedent("""
+                @  Commit 3
+                o  Commit 2
+                o  Commit 1
+                +  Initial commit
+            """)
+
+        # Check that we returned to the original commit
+        assert jj.diagram() == dedent("""
+            o  Commit 3
+            @  Commit 2
+            o  Commit 1
+            +  Initial commit
+        """)
 
     def test_preserves_empty_commit(self, repo_with_commits: Path):
         # start from an empty fork off of a non-empty commit in the middle of the stack
         stack = jj.pushable_stack()
-        assert len(stack) >= 3
-        run_cmd("jj", "edit", stack[-2])
-        run_cmd("jj", "new")
+        run_cmd("jj", "new", stack[-2])
         original = jj.change_id("@")
-        assert jj.description_of(original) == ""
-        assert jj.files_in(original) == set()
-        original_parents = jj.parents_of(original)
+        assert jj.diagram() == dedent("""
+            @
+            | o  Commit 3
+            |/
+            o  Commit 2
+            o  Commit 1
+            +  Initial commit
+        """)
 
         # edit some other part of the stack
         target = stack[-1]
         with jj.with_edit(target):
-            assert jj.change_id("@") == target
+            assert jj.diagram() == dedent("""
+                @  Commit 3
+                o  Commit 2
+                o  Commit 1
+                +  Initial commit
+            """)
 
         # return to a new empty forked off of the same point
         replacement = jj.change_id("@")
         assert replacement != original
-        assert jj.description_of(replacement) == ""
-        assert jj.files_in(replacement) == set()  # Ensure we return to empty
-        assert jj.parents_of(replacement) == original_parents
+        assert jj.diagram() == dedent("""
+            @
+            | o  Commit 3
+            |/
+            o  Commit 2
+            o  Commit 1
+            +  Initial commit
+        """)
 
 
 class TestWithNew:
     def test_creates_new_commit(self, repo_with_commits: Path):
-        stack = jj.checkable_stack()
-        original_parents = jj.parents_of(jj.change_id("@"))
+        # Starting in the middle of the stack
+        jj.edit(jj.change_id("@--"))
+        assert jj.diagram() == dedent("""
+            o  Commit 3
+            @  Commit 2
+            o  Commit 1
+            +  Initial commit
+        """)
 
-        assert len(stack) > 1
+        # Create a new commit forked off of $target
+        stack = jj.checkable_stack()
         target = stack[0]
         with jj.with_new(target):
-            assert jj.parents_of(jj.change_id("@")) == {target}
+            jj.describe(jj.ChangeId("@"), "New commit")
+            assert jj.diagram() == dedent("""
+                @  New commit
+                | o  Commit 3
+                | o  Commit 2
+                |/
+                o  Commit 1
+                +  Initial commit
+            """)
 
-        assert jj.parents_of(jj.change_id("@")) == original_parents
+        # Return to original commit, with new commit forked
+        assert jj.diagram() == dedent("""
+            o  Commit 3
+            @  Commit 2
+            | o  New commit
+            |/
+            o  Commit 1
+            +  Initial commit
+        """)

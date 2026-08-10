@@ -289,6 +289,12 @@ def log_with_annotations(
     )
 
 
+def diagram(descr: str = "self.description()") -> str:
+    d = run("log", "-T", f'{descr}', "--config", "ui.graph.style=ascii", cap=True)
+    d = d[:-4]  # remove trailing \n|\n~
+    return f"\n{d}\n"
+
+
 @contextmanager
 def with_edit(rev: RevSet, new: bool = False):
     """Context manager to temporarily switch to a change and reset on exit.
