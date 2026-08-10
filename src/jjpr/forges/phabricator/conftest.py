@@ -62,14 +62,19 @@ def session(
 
 
 @pytest.fixture
+def repo_name() -> str:
+    rand = "".join(random.choices(string.ascii_lowercase, k=4))
+    return f"ztst-{rand}"
+
+
+@pytest.fixture
 def repo(
     url: httpx.URL,
+    repo_name: str,
     session: client.PhabricatorClient,
     request: pytest.FixtureRequest,
 ) -> t.Generator[httpx.URL, None, None]:
-    rand = "".join(random.choices(string.ascii_lowercase, k=4))
-    repo_name = f"ztst-phab-{rand}"
-    callsign = f"ZTST{rand.upper()}"
+    callsign = f"ZTST{repo_name[-4:].upper()}"
 
     # Call the Phabricator API to create the metadata for
     # a new repository (but the actual repo is created by

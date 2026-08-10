@@ -44,12 +44,17 @@ def session(
 
 
 @pytest.fixture
+def repo_name() -> str:
+    rand = "".join(random.choices(string.ascii_lowercase, k=4))
+    return f"ztst-{rand}"
+
+
+@pytest.fixture
 def repo(
     url: httpx.URL,
+    repo_name: str,
     session: client.GerritClient,
 ) -> t.Generator[httpx.URL, None, None]:
-    rand = "".join(random.choices(string.ascii_lowercase, k=4))
-    repo_name = f"ztst-gerr-{rand}"
     try:
         session.put(
             f"projects/{repo_name}",

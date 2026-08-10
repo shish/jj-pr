@@ -70,15 +70,20 @@ def session(
 
 
 @pytest.fixture
+def repo_name() -> str:
+    rand = "".join(random.choices(string.ascii_lowercase, k=4))
+    return f"ztst-{rand}"
+
+
+@pytest.fixture
 def repo(
     url: httpx.URL,
+    repo_name: str,
     api_url: httpx.URL,
     session: httpx.Client,
     github_organization: str,
 ) -> t.Generator[httpx.URL, None, None]:
     """Create and cleanup a test repository on GitHub."""
-    rand = "".join(random.choices(string.ascii_lowercase, k=4))
-    repo_name = f"ztst-{rand}"
 
     # Get the current username from the API
     try:
