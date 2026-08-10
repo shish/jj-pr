@@ -25,3 +25,9 @@ class TestRun:
     def test_run_strips_whitespace(self):
         output = exec.run("echo", "  spaced  ")
         assert output == "spaced"
+
+    def test_stdin_captured(self):
+        # When capturing output, stdin should be set to DEVNULL
+        # to avoid hanging when the subprocess expects input.
+        output = exec.run("cat", cap=True)
+        assert output == ""

@@ -31,6 +31,7 @@ def run(*args: str, cap: bool = True) -> str | None:
             log.debug(f"run({shlex.join(cmd)}) -> ...")
         result = subprocess.run(
             cmd,
+            stdin=subprocess.DEVNULL if cap else None,
             capture_output=cap,
             text=True,
             check=True,
