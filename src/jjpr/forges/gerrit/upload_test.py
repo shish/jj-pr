@@ -1,6 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
+pytestmark = [pytest.mark.integration, pytest.mark.gerrit]
+
 from ...conftest import run_cmd
 from ...utils import jj
 

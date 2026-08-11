@@ -1,6 +1,10 @@
 import re
 from pathlib import Path
 
+import pytest
+
+pytestmark = [pytest.mark.integration, pytest.mark.demo]
+
 from ...conftest import run_cmd
 from .log import log_cmd
 

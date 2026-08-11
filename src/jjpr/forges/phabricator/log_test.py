@@ -1,5 +1,9 @@
 from pathlib import Path
 
+import pytest
+
+pytestmark = [pytest.mark.integration, pytest.mark.phabricator]
+
 from ...conftest import run_cmd
 
 

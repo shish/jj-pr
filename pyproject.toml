@@ -43,4 +43,11 @@ omit = ["*_test.py", "conftest.py", "jj_cli.py"]
 [tool.pytest.ini_options]
 #testpaths = ["tests/"]
 #python_files = ["*.py"]
-addopts = "--cov-report=term-missing"
+addopts = "--cov-report=term-missing --strict-markers"
+markers = [
+    "integration: marks tests as integration tests requiring external services",
+    "gerrit: marks tests as Gerrit forge tests",
+    "github: marks tests as GitHub forge tests",
+    "phabricator: marks tests as Phabricator forge tests",
+    "demo: marks tests as Demo forge tests",
+]

@@ -120,8 +120,11 @@ export JJPR_TEST_PHABRICATOR_VCS_PASSWORD=...
 open "http://gitea.localhost:8082/user/settings/applications"
 export JJPR_TEST_GITEA_API_TOKEN=...
 
-# Run tests against the above forges
-uv run pytest -v src/jjpr/forges
+# Run just the integration tests for a specific forge
+uv run pytest -m "integration and gerrit"
+
+# Run all the integration tests
+uv run pytest -m integration
 
 # Delete test environment
 docker compose down -v

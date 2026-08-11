@@ -1,5 +1,9 @@
 from pathlib import Path
 
+import pytest
+
+pytestmark = [pytest.mark.integration, pytest.mark.demo]
+
 from .download import download_cmd
 
 

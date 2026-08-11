@@ -1,5 +1,9 @@
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.gerrit
+
 from ....conftest import run_cmd
 from ....utils import netrc
 from .info import get_forge_info

@@ -5,6 +5,8 @@ from unittest import mock
 import httpx
 import pytest
 
+pytestmark = pytest.mark.gerrit
+
 from ....utils import exc, netrc
 from .client import GerritClient
 

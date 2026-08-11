@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.phabricator
+
 from . import diff
 from .diff import ChangeType, FileType
 

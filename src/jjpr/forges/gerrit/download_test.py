@@ -2,6 +2,9 @@ import json
 from pathlib import Path
 
 import httpx
+import pytest
+
+pytestmark = [pytest.mark.integration, pytest.mark.gerrit]
 
 from ...conftest import run_cmd, tmp_cwd
 

@@ -1,5 +1,9 @@
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.github
+
 from ....conftest import run_cmd
 from .info import get_forge_info
 

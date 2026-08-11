@@ -6,6 +6,8 @@ import pytest
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import jj
 
+pytestmark = [pytest.mark.integration, pytest.mark.gerrit]
+
 
 class TestRebase:
     def test_rebase_with_private_changes(self, clone: Path):

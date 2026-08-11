@@ -1,6 +1,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.phabricator
+
 from ....conftest import run_cmd
 from .info import get_forge_info
 
