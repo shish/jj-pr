@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import typing as t
+from pathlib import Path
 
 import httpx
 
@@ -30,16 +31,26 @@ class GitHubClient:
     def _resolve_token(base_url: httpx.URL) -> str:
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
         if token:
+            log.debug("Got token from env var")
             return token
 
         host = base_url.host
         auth = netrc.read(host)
         if auth:
+            log.debug(f"Got token from ~/.netrc for {host}")
             return auth[1]
+
+        try:
+            token = _read_gh_hosts(host)
+            if token:
+                return token
+        except OSError:
+            pass
 
         raise exc.UserError(
             "Could not find a GitHub token. Set the GITHUB_TOKEN or GH_TOKEN "
-            f"environment variable, or add credentials for {host} to ~/.netrc"
+            f"environment variable, add credentials for {host} to ~/.netrc, "
+            "or authenticate with the gh CLI (`gh auth login`)"
         )
 
     def graphql(self, query: str, variables: t.Mapping[str, str | int]):
@@ -65,3 +76,21 @@ class GitHubClient:
         # fmt: on
 
         return data
+
+
+def _read_gh_hosts(host: str) -> str | None:
+    """
+    hosts.yml appears to be consistently trivial, so let's parse it
+    manually rather than adding a dependency on PyYAML or the gh cli
+    """
+    hosts_file = Path.home() / ".config" / "gh" / "hosts.yml"
+    current_host: str | None = None
+    for line in hosts_file.read_text().splitlines():
+        # Top-level (unindented) keys are hostnames
+        if line and not line[0].isspace():
+            current_host = line.rstrip().removesuffix(":")
+        elif current_host == host:
+            key, _, value = line.strip().partition(":")
+            if key == "oauth_token" and (token := value.strip()):
+                return token
+    return None
