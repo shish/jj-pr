@@ -267,7 +267,9 @@ def bookmarks() -> dict[str, dict[str, t.Any]]:
 
 
 def log_with_annotations(
-    args: list[str], template: str, get_pr_states: t.Callable
+    args: list[str],
+    template: str,
+    get_pr_states: t.Callable[[list[str]], dict[str, str]],
 ) -> str:
     """
     - Run `jj log` with a custom template which adds PR IDs into the output
