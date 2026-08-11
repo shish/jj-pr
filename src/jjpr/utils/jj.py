@@ -14,8 +14,9 @@ from . import exec, text
 log = logging.getLogger(__name__)
 
 # Type aliases
-RevSet = str
-ChangeId = t.NewType("ChangeId", RevSet)
+ChangeId = t.NewType("ChangeId", str)
+_RevSet = t.NewType("_RevSet", str)  # Specifically and only a revset
+RevSet = t.LiteralString | _RevSet | ChangeId  # Anything which counts as a revset
 
 
 class JjError(Exception):
@@ -174,6 +175,24 @@ def commit_id(change_id: ChangeId) -> str:
 # Extra helpers
 
 
+@t.overload
+def revset(r: str) -> _RevSet: ...
+
+
+@t.overload
+def revset(r: None) -> None: ...
+
+
+def revset(r: str | None) -> _RevSet | None:
+    """
+    Convert a revset-like string into a _RevSet type, which is used to indicate
+    that the string is specifically a revset and not just any string.
+    """
+    if r is None:
+        return None
+    return _RevSet(r)
+
+
 def change_ids(r: RevSet) -> list[ChangeId]:
     """
     Return a list of change IDs for the given revset, in reverse order (oldest first).
@@ -290,7 +309,7 @@ def log_with_annotations(
 
 
 def diagram(descr: str = "self.description()") -> str:
-    d = run("log", "-T", f'{descr}', "--config", "ui.graph.style=ascii", cap=True)
+    d = run("log", "-T", f"{descr}", "--config", "ui.graph.style=ascii", cap=True)
     d = d[:-4]  # remove trailing \n|\n~
     return f"\n{d}\n"
 

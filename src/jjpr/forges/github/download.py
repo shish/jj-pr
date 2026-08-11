@@ -16,7 +16,7 @@ def download_cmd(remote: str, identifier: str) -> None:
     branch_name = pr_info["headRefName"]
     jj.git_fetch(remote=forge_info.remote)
     jj.bookmark_track(branch_name, remote=forge_info.remote)
-    jj.new(f"{branch_name}@{forge_info.remote}")
+    jj.new(jj.revset(f"{branch_name}@{forge_info.remote}"))
 
 
 def _get_pr_info(

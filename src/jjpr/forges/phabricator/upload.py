@@ -13,13 +13,13 @@ log = logging.getLogger(__name__)
 
 def upload_cmd(
     remote: str,
-    ref: str | None,
+    ref: jj.RevSet | None,
     draft: bool = False,
     message: str | None = None,
     pre_commit: bool = True,
 ) -> None:
     forge_info = info.get_forge_info(remote)
-    changes = jj.change_ids(ref) if ref else jj.pushable_stack()
+    changes = jj.change_ids(jj.revset(ref)) if ref else jj.pushable_stack()
     log.info(f"Pushing {ref} ({changes})")
     for change_id in changes:
         _push_one(
@@ -101,7 +101,7 @@ def _parse_commit_message(
 def _get_parent_phids(
     client: client.PhabricatorClient, change_id: jj.ChangeId
 ) -> list[client.PhId]:
-    parent_chids = jj.change_ids(f"{change_id}- & mutable()")
+    parent_chids = jj.change_ids(jj.revset(f"{change_id}- & mutable()"))
     parent_revs = [_change_to_revision(p) for p in parent_chids]
     parent_phids = [_revision_to_phid(client, p) for p in parent_revs if p is not None]
     return parent_phids
@@ -147,7 +147,9 @@ def _push_change_to_differential_natively(
         branch=forge_info.default_merge_target,
         sourceControlSystem="git",
         sourceControlPath="/",
-        sourceControlBaseRevision=jj.commit_id(jj.change_id(f"{change_id}-")),
+        sourceControlBaseRevision=jj.commit_id(
+            jj.change_id(jj.revset(f"{change_id}-"))
+        ),
         creationMethod="jjpr",
         lintStatus=lint_info[0],
         unitStatus=unit_info[0],
@@ -178,7 +180,7 @@ def _push_change_to_differential_natively(
 
     if staging_uri := _get_staging_url(client, forge_info.project_id):
         log.info(f"Pushing {change_id} to staging at {staging_uri}")
-        base_hash = jj.commit_id(jj.change_id(f"{change_id}-"))
+        base_hash = jj.commit_id(jj.change_id(jj.revset(f"{change_id}-")))
         diff_hash = jj.commit_id(change_id)
         exec.run(
             "git",

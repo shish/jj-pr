@@ -97,10 +97,10 @@ def upload_command(
     """Upload current stack to the forge."""
     go = t.cast(GlobalOptions, ctx.obj)
     if pre_commit:
-        changes = jj.change_ids(ref) if ref else jj.pushable_stack()
+        changes = jj.change_ids(jj.revset(ref)) if ref else jj.pushable_stack()
         _pre_commit_stack(changes)
     go.backend.upload_cmd(
-        go.remote, ref, draft=draft, message=message, pre_commit=pre_commit
+        go.remote, jj.revset(ref), draft=draft, message=message, pre_commit=pre_commit
     )
 
 
@@ -123,7 +123,7 @@ def rebase_command(
         pass  # revset = revset
     else:
         revset = "@"
-    roots = jj.change_ids(f"roots(mutable()::{revset})")
+    roots = jj.change_ids(jj.revset(f"roots(mutable()::{revset})"))
     log.info(f"Rebasing revset: {revset} ({roots})")
     go.backend.rebase_cmd(go.remote, roots)
 
@@ -187,7 +187,7 @@ def pre_commit_command(
 ) -> None:
     """Run pre-commit hooks on a stack of changes."""
     # go = t.cast(GlobalOptions, ctx.obj)
-    changes = jj.change_ids(ref) if ref else jj.checkable_stack()
+    changes = jj.change_ids(jj.revset(ref)) if ref else jj.checkable_stack()
     _pre_commit_stack(changes)
 
 

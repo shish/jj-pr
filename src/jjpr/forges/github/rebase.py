@@ -93,13 +93,13 @@ def rebase_cmd(remote: str, change_ids: list[jj.ChangeId]) -> None:
 
         # If we found a merge target, use it; otherwise fall back to default
         if merge_target:
-            base = f"{merge_target}@{forge_info.remote}"
+            base = jj.revset(f"{merge_target}@{forge_info.remote}")
             log.info(
                 f"Found PR merge target '{merge_target}' for {root}, "
                 f"rebasing descendants onto {base}"
             )
         else:
-            base = f"{forge_info.default_merge_target}@{forge_info.remote}"
+            base = jj.revset(f"{forge_info.default_merge_target}@{forge_info.remote}")
             log.info(
                 f"No PR found for descendants of {root}, "
                 f"rebasing onto default target {base}"
