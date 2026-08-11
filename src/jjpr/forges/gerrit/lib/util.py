@@ -1,9 +1,52 @@
+import re
 import typing as t
 
 import httpx
 
 from ....utils import cr
 from .client import GerritClient
+
+
+def _check_color(state: str | None) -> str:
+    return {
+        "SUCCESSFUL": "green",
+        "NOT_RELEVANT": "green",
+        "FAILED": "red",
+    }.get(state or "", "yellow")
+
+
+def parse_cr(
+    change: dict[str, t.Any],
+    client: GerritClient,
+    forge_url: httpx.URL,
+) -> cr.CodeReview:
+    checks = [
+        cr.Blocker(
+            name=check.get("checker_name", check["checker_uuid"]),
+            color=_check_color(check.get("state")),
+            url=httpx.URL(check["url"]) if check.get("url") else None,
+        )
+        for check in get_checks(client, change["_number"])
+        if check.get("state") not in {"SUCCESSFUL", "NOT_RELEVANT"}
+    ]
+    blockers = [
+        cr.Blocker(re.sub("[^A-Z]+", "", req["name"]))
+        for req in change.get("submit_requirements", [])
+        if req["status"] not in {"SATISFIED", "NOT_APPLICABLE"}
+    ]
+    return cr.CodeReview(
+        cr_id="c" + str(change["_number"]),
+        title=change["subject"],
+        url=forge_url.join(f"/c/{change['_number']}"),
+        state=colour_state(
+            is_private=change.get("is_private", False),
+            work_in_progress=change.get("work_in_progress", False),
+            blockers=len(blockers) > 0,
+        ),
+        checks=checks,
+        blockers=blockers,
+        unresolved_comments=change.get("unresolved_comment_count", 0),
+    )
 
 
 def get_checks(client: GerritClient, change_number: int) -> list[dict[str, t.Any]]:
@@ -27,7 +70,6 @@ def colour_state(
     is_private: bool = False,
     work_in_progress: bool = False,
     blockers: bool = False,
-    url: httpx.URL | None = None,
 ) -> cr.State:
     if is_private:
         state = "Private"
@@ -42,4 +84,4 @@ def colour_state(
         state = "Accepted"
         color = "green"
 
-    return cr.State(state, color=color, url=url)
+    return cr.State(state, color=color)

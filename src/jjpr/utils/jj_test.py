@@ -4,10 +4,11 @@ from pathlib import Path
 from textwrap import dedent
 from unittest import mock
 
+import httpx
 import pytest
 
 from ..conftest import run_cmd
-from . import jj, text
+from . import cr, jj, text
 
 log = logging.getLogger(__name__)
 
@@ -268,12 +269,28 @@ class TestLogWithAnnotations:
                 [],
                 "commit.pr_id()",
                 lambda pr_ids: {
-                    "D123": "Accepted",
-                    "D456": "Needs Review",
+                    "D123": cr.CodeReview(
+                        cr_id="456",
+                        title="Fix bug",
+                        url=httpx.URL("https://example.com/fix-bug"),
+                        state=cr.State(name="Accepted", color="green"),
+                        checks=[],
+                        blockers=[],
+                        extra={"author": "alice", "branch": "feature/x"},
+                    ),
+                    "D456": cr.CodeReview(
+                        cr_id="456",
+                        title="Fix bug",
+                        url=httpx.URL("https://example.com/fix-bug"),
+                        state=cr.State(name="Needs Review", color="yellow"),
+                        checks=[],
+                        blockers=[],
+                        extra={"author": "alice", "branch": "feature/x"},
+                    ),
                 },
             )
 
-        assert txt == (
+        assert text.remove_ansi(txt) == (
             "@  psnykstn shish@shishnet.org 09:07:34 148e97e0 \n"
             "│  (empty) (no description set)\n"
             "○  sxuvxvpr shish@shishnet.org 09:07:34 c790cc63 Accepted\n"

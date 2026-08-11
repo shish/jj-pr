@@ -1,16 +1,17 @@
 import typing as t
 
-import httpx
-
-from ...utils import cr, jj, text
+from ...utils import cr, jj
 from .lib import client, info, util
 
 _PR_FIELDS = f"""
   url
+  number
+  title
   isDraft
   headRefName
   {util.STATUS_CHECK_FIELDS}
   {util.REVIEW_FIELDS}
+  {util.REVIEW_THREAD_FIELDS}
 """
 
 
@@ -58,38 +59,13 @@ def _get_prs_by_branch(
 def log_cmd(remote: str, args: list[str]) -> str:
     forge_info = info.get_forge_info(remote)
 
-    def _pr_ids_to_states(pr_ids: list[str]) -> dict[str, str]:
-        id_to_state: dict[str, str] = {}
+    def _pr_ids_to_crs(pr_ids: list[str]) -> dict[str, cr.CodeReview]:
         owner, name = forge_info.project_id.split("/")
         prs = _get_prs_by_branch(forge_info.client, owner, name, _branch_names(pr_ids))
-
-        for pr in prs:
-            state = text.rich_str(
-                util.pr2state(pr),
-                *[
-                    cr.Blocker(
-                        name={
-                            "SUCCESS": "✔",
-                            "FAILURE": "✗",
-                            "PENDING": "…",
-                        }.get(check["conclusion"], f"<{check['conclusion']}>"),
-                        color={
-                            "SUCCESS": "green",
-                            "FAILURE": "red",
-                            "PENDING": "yellow",
-                        }.get(check["conclusion"], "normal"),
-                        url=httpx.URL(check["detailsUrl"]),
-                    )
-                    for check in util.flatten_checks(pr)
-                ],
-            )
-            id_to_state[pr["headRefName"]] = state
-            id_to_state[pr["headRefName"] + "*"] = state
-            id_to_state[pr["headRefName"] + "@" + forge_info.remote] = state
-        return id_to_state
+        return {pr["headRefName"]: util.parse_cr(pr) for pr in prs}
 
     return jj.log_with_annotations(
         args,
-        'commit.bookmarks().join(",")',
-        _pr_ids_to_states,
+        'commit.bookmarks().map(|b| b.name()).join(",")',
+        _pr_ids_to_crs,
     )

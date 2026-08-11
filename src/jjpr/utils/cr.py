@@ -9,19 +9,16 @@ from . import text
 
 
 @dataclass
-class Title:
-    text: str
-    url: httpx.URL | None = None
+class State:
+    name: str
+    color: str
+
+    def __rich__(self) -> str:
+        return f"[{self.color}]{escape(self.name)}[/{self.color}]"
 
     @override
     def __str__(self) -> str:
-        return self.text
-
-    def __rich__(self) -> str:
-        t = escape(self.text)
-        if self.url:
-            t = f"[link={self.url}]{t}[/link]"
-        return t
+        return text.rich_str(self)
 
 
 @dataclass
@@ -40,32 +37,29 @@ class Blocker:
 
 
 @dataclass
-class State:
-    name: str
-    color: str | None = None
-    url: httpx.URL | None = None
-
-    def __rich__(self) -> str:
-        t = escape(self.name)
-        if self.color:
-            t = f"[{self.color}]{t}[/{self.color}]"
-        if self.url:
-            t = f"[link={self.url}]{t}[/link]"
-        return t
-
-    @override
-    def __str__(self) -> str:
-        return text.rich_str(self)
-
-
-@dataclass
 class CodeReview:
     cr_id: str
-    title: Title
+    title: str
+    url: httpx.URL
     state: State
     checks: list[Blocker]
     blockers: list[Blocker]
+    unresolved_comments: int | None = None
     extra: dict[str, str] = field(default_factory=dict)
+
+    # Short render for `jj pr log` -- `jj pr list` will render each element
+    # in a table in full-size mode
+    @override
+    def __str__(self) -> str:
+        parts = []
+        parts.append(self.state.__rich__())
+        for check in self.checks:
+            parts.append(check.__rich__())
+        for blocker in self.blockers:
+            parts.append(blocker.__rich__())
+        if self.unresolved_comments:
+            parts.append(f"[yellow]({self.unresolved_comments}!)[/yellow]")
+        return text.rich_str(" ".join(str(x) for x in parts if x))
 
 
 def json_default(obj: t.Any) -> t.Any:

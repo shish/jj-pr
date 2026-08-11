@@ -41,6 +41,14 @@ REVIEW_FIELDS = """
   }
 """
 
+REVIEW_THREAD_FIELDS = """
+  reviewThreads(first: 100) {
+    nodes {
+      isResolved
+    }
+  }
+"""
+
 
 def flatten_checks(pr: dict[str, t.Any]) -> list[dict[str, t.Any]]:
     """
@@ -82,7 +90,6 @@ def pr2state(
 ) -> cr.State:
     is_draft = pr["isDraft"]
     reviews = pr["reviews"]["nodes"]
-    url = httpx.URL(pr["url"])
 
     if reviews is None:
         reviews = []
@@ -106,4 +113,39 @@ def pr2state(
             display_state = "Needs Review"
             color = "yellow"
 
-    return cr.State(display_state, color=color, url=url)
+    return cr.State(display_state, color=color)
+
+
+def count_unresolved(pr: dict[str, t.Any]) -> int:
+    """
+    Count the number of unresolved review threads in a PR.
+    """
+    threads = pr.get("reviewThreads", {}).get("nodes", [])
+    return sum(1 for thread in threads if not thread.get("isResolved", True))
+
+
+_CHECK_COLORS = {
+    "SUCCESS": "green",
+    "PENDING": "yellow",
+    "FAILURE": "red",
+}
+
+
+def parse_cr(pr: dict[str, t.Any]) -> cr.CodeReview:
+    checks = [
+        cr.Blocker(
+            name=check["name"],
+            color=_CHECK_COLORS.get(check["conclusion"], "normal"),
+            url=check["detailsUrl"],
+        )
+        for check in flatten_checks(pr)
+    ]
+    return cr.CodeReview(
+        cr_id="#" + str(pr["number"]),
+        title=pr["title"],
+        url=httpx.URL(pr["url"]),
+        state=pr2state(pr),
+        checks=checks,
+        blockers=[],
+        unresolved_comments=count_unresolved(pr),
+    )

@@ -12,6 +12,7 @@ _DEMO_CRS: list[dict[str, t.Any]] = [
         "state": ("Draft", "cyan"),
         "checks": [("lint", "red"), ("tests", "green")],
         "blockers": [],
+        "unresolved_comments": 2,
     },
     {
         "cr_id": "#102",
@@ -19,6 +20,7 @@ _DEMO_CRS: list[dict[str, t.Any]] = [
         "state": ("Needs Review", "yellow"),
         "checks": [("lint", "green"), ("tests", "yellow")],
         "blockers": [("Code-Review", "yellow")],
+        "unresolved_comments": 1,
     },
     {
         "cr_id": "#103",
@@ -26,6 +28,7 @@ _DEMO_CRS: list[dict[str, t.Any]] = [
         "state": ("Accepted", "green"),
         "checks": [("lint", "green"), ("tests", "green")],
         "blockers": [],
+        "unresolved_comments": 0,
     },
     {
         "cr_id": "#104",
@@ -33,6 +36,7 @@ _DEMO_CRS: list[dict[str, t.Any]] = [
         "state": ("Blocked", "red"),
         "checks": [("lint", "green"), ("tests", "red")],
         "blockers": [("Build", "red"), ("Code-Review", "yellow")],
+        "unresolved_comments": 0,
     },
 ]
 
@@ -42,15 +46,14 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
     return [
         cr.CodeReview(
             cr_id=demo["cr_id"],
-            title=cr.Title(
-                demo["title"],
-                url=forge_info.forge_url.join(demo["cr_id"].lstrip("#")),
-            ),
+            title=demo["title"],
+            url=forge_info.forge_url.join(demo["cr_id"].lstrip("#")),
             state=cr.State(demo["state"][0], color=demo["state"][1]),
             checks=[cr.Blocker(name, color=color) for name, color in demo["checks"]],
             blockers=[
                 cr.Blocker(name, color=color) for name, color in demo["blockers"]
             ],
+            unresolved_comments=demo["unresolved_comments"],
         )
         for demo in _DEMO_CRS
     ]

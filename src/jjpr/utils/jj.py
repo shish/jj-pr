@@ -6,7 +6,7 @@ import subprocess
 import typing as t
 from contextlib import contextmanager
 
-from . import exec, text
+from . import cr, exec, text
 
 #######################################################################
 # Utilities
@@ -270,7 +270,7 @@ def bookmarks() -> dict[str, dict[str, t.Any]]:
 def log_with_annotations(
     args: list[str],
     template: str,
-    get_pr_states: t.Callable[[list[str]], dict[str, str]],
+    get_pr_states: t.Callable[[list[str]], dict[str, cr.CodeReview]],
 ) -> str:
     """
     - Run `jj log` with a custom template which adds PR IDs into the output
@@ -299,7 +299,10 @@ def log_with_annotations(
     pr_ids = re.findall(r"JJPR:([^:]*):JJPR", logdata)
 
     # build a map of PR IDs to their states using the provided get_pr_states function
-    id_to_state = get_pr_states(pr_ids)
+    if pr_ids:
+        id_to_state = get_pr_states(pr_ids)
+    else:
+        id_to_state = {}
 
     # replace the annotations with the corresponding states
     return re.sub(

@@ -6,20 +6,6 @@ import httpx
 from . import cr
 
 
-class TestTitle:
-    def test_str(self) -> None:
-        t = cr.Title(text="Hello", url=None)
-        assert str(t) == "Hello"
-
-    def test_rich_without_url(self) -> None:
-        t = cr.Title(text="Hello", url=None)
-        assert t.__rich__() == "Hello"
-
-    def test_rich_with_url(self) -> None:
-        t = cr.Title(text="[x] Hello", url=httpx.URL("https://example.com"))
-        assert t.__rich__() == "[link=https://example.com]\\[x] Hello[/link]"
-
-
 class TestBlocker:
     def test_rich_without_color_or_url(self) -> None:
         b = cr.Blocker(name="Blocker[x]", color=None, url=None)
@@ -35,34 +21,19 @@ class TestBlocker:
 
 class TestState:
     def test_str(self) -> None:
-        s = cr.State(name="Open", color=None, url=None)
+        s = cr.State(name="Open", color="green")
         assert "Open" in str(s)
-
-    def test_rich_without_color_or_url(self) -> None:
-        s = cr.State(name="Open", color=None, url=None)
-        assert s.__rich__() == "Open"
-
-    def test_rich_with_color_and_url(self) -> None:
-        url = httpx.URL("https://example.com")
-        s = cr.State(name="Open", color="green", url=url)
-        rich_output = s.__rich__()
-        assert "[green]" in rich_output
-        assert "[link=https://example.com]" in rich_output
 
 
 class TestCodeReview:
     def test_asdict_with_extra(self) -> None:
-        title = cr.Title(text="Fix bug", url=None)
-        state = cr.State(name="Open", color=None, url=None)
-        checks = []
-        blockers = []
-
         code_review = cr.CodeReview(
             cr_id="456",
-            title=title,
-            state=state,
-            checks=checks,
-            blockers=blockers,
+            title="Fix bug",
+            url=httpx.URL("https://example.com/fix-bug"),
+            state=cr.State(name="Open", color="blue"),
+            checks=[],
+            blockers=[],
             extra={"author": "alice", "branch": "feature/x"},
         )
 
@@ -71,17 +42,13 @@ class TestCodeReview:
         assert result["extra"]["branch"] == "feature/x"
 
     def test_json(self) -> None:
-        title = cr.Title(text="Fix bug", url=httpx.URL("https://example.com/fix-bug"))
-        state = cr.State(name="Open", color=None, url=None)
-        checks = []
-        blockers = []
-
         code_review = cr.CodeReview(
             cr_id="456",
-            title=title,
-            state=state,
-            checks=checks,
-            blockers=blockers,
+            title="Fix bug",
+            url=httpx.URL("https://example.com/fix-bug"),
+            state=cr.State(name="Open", color="blue"),
+            checks=[],
+            blockers=[],
             extra={"author": "alice", "branch": "feature/x"},
         )
 

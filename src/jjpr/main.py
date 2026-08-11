@@ -7,6 +7,7 @@ import typing as t
 from pathlib import Path
 
 import typer
+from rich import markup
 from rich.console import Console
 from rich.table import Table
 
@@ -164,16 +165,18 @@ def list_command(
         table.add_column("State", width=12)
         table.add_column("Checks", min_width=8)
         table.add_column("Blockers", min_width=8)
+        table.add_column("Comments", min_width=8)
         for key in sorted(all_extra_keys):
             table.add_column(key.title(), style="magenta")
 
         for item in items:
             table.add_row(
                 item.cr_id,
-                item.title,
+                f"[link={item.url}]{markup.escape(item.title)}[/link]",
                 item.state,
                 ", ".join(b.__rich__() for b in item.checks),
                 ", ".join(b.__rich__() for b in item.blockers),
+                str(item.unresolved_comments),
                 *[item.extra.get(key, "") for key in sorted(all_extra_keys)],
             )
 
