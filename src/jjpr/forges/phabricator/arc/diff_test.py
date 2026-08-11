@@ -49,11 +49,11 @@ class TestArcanistDiffParser:
     def diff_test_dir(self) -> Path:
         return Path(__file__).parent / "diff_test"
 
-    def parse_diff(self, diff_file: Path) -> list:
+    def parse_diff(self, diff_file: Path) -> list[diff.Change]:
         contents = diff_file.read_text()
         return diff.parse_diff(contents)
 
-    def parse_diff_text(self, diff_text: str) -> list:
+    def parse_diff_text(self, diff_text: str) -> list[diff.Change]:
         return diff.parse_diff(diff_text)
 
     def run_single_rename(

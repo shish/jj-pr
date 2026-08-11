@@ -44,7 +44,9 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
     return crs
 
 
-def _my_open_crs(forge_info: info.ForgeInfo) -> list[dict[str, t.Any]]:
+def _my_open_crs(
+    forge_info: info.ForgeInfo[client.PhabricatorClient],
+) -> list[dict[str, t.Any]]:
     myPHID = forge_info.client.call("user.whoami")["phid"]
     revs = forge_info.client.call(
         "differential.revision.search",
@@ -66,7 +68,7 @@ def _my_open_crs(forge_info: info.ForgeInfo) -> list[dict[str, t.Any]]:
 
 
 def _get_checks(
-    forge_info: info.ForgeInfo, diff_phids: list[client.PhId]
+    forge_info: info.ForgeInfo[client.PhabricatorClient], diff_phids: list[client.PhId]
 ) -> dict[client.PhId, list[dict[str, t.Any]]]:
     """Fetch Harbormaster build/check statuses for a set of diffs.
 

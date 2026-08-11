@@ -3,6 +3,7 @@ import json
 import logging
 
 import httpx
+from typing_extensions import override
 
 from ....utils import exc, netrc
 
@@ -30,6 +31,7 @@ class GerritClient(httpx.Client):
             headers={"Authorization": f"Basic {cred}"},
         )
 
+    @override
     def request(self, *args, **kwargs) -> httpx.Response:
         response = super().request(*args, **kwargs)
         request = response.request

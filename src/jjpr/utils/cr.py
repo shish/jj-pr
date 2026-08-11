@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 
 import httpx
 from rich.markup import escape
+from typing_extensions import override
 
 from . import text
 
@@ -12,6 +13,7 @@ class Title:
     text: str
     url: httpx.URL | None = None
 
+    @override
     def __str__(self) -> str:
         return self.text
 
@@ -51,6 +53,7 @@ class State:
             t = f"[link={self.url}]{t}[/link]"
         return t
 
+    @override
     def __str__(self) -> str:
         return text.rich_str(self)
 

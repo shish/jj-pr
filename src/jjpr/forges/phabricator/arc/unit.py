@@ -1,6 +1,7 @@
 import json
 import logging
 import shutil
+import typing as t
 from enum import StrEnum
 from pathlib import Path
 
@@ -17,14 +18,17 @@ class UnitStatus(StrEnum):
     SKIP = "skip"
 
 
-def unit_current_diff(pre_commit: bool) -> tuple[UnitStatus, list]:
+UnitResults = dict[str, list[t.Any]]
+
+
+def unit_current_diff(pre_commit: bool) -> tuple[UnitStatus, UnitResults]:
     if not pre_commit:
-        return (UnitStatus.SKIP, [])
+        return (UnitStatus.SKIP, {})
     if not Path(".arcunit").exists():
-        return (UnitStatus.NONE, [])
+        return (UnitStatus.NONE, {})
     if not shutil.which("arc"):
         log.warning("arc not found in PATH, skipping unit")
-        return (UnitStatus.SKIP, [])
+        return (UnitStatus.SKIP, {})
     try:
         fail_data = exec.run("arc", "unit", "--output", "json", cap=True)
         fails_per_file = json.loads(fail_data)
@@ -38,4 +42,4 @@ def unit_current_diff(pre_commit: bool) -> tuple[UnitStatus, list]:
                     break
         return (worst, fails_per_file)
     except Exception:
-        return (UnitStatus.FAIL, [])
+        return (UnitStatus.FAIL, {})
