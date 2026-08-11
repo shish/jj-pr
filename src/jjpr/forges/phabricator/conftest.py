@@ -9,7 +9,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-import tenacity as tc
 
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import netrc
@@ -90,11 +89,10 @@ def repo(
                 {"type": "shortName", "value": repo_name},
             ],
         )
-    except Exception as e:
-        pytest.skip(f"Phabricator repo creation error: {url}: {e}")
 
-    # Force the repository to be created immediately
-    try:
+        # Force the repository to be created immediately, instead of waiting
+        # for phabricator's internal cronjob to run and detect the metadata
+        # we set above.
         original_dir = request.config.invocation_params.dir
         # fmt: off
         run_cmd(
@@ -105,23 +103,12 @@ def repo(
         )
         # fmt: on
     except Exception as e:
-        pytest.skip(f"Phabricator repo update error: {url}: {e}")
+        pytest.skip(f"Phabricator repo creation error: {url}: {e}")
 
     try:
         repo_url = url.join(f"/source/{repo_name}.git")
         with tmp_cwd():
-            # Originally we waited for the repo to be created by the cronjob,
-            # now we force it via the `bin/repository update` command above,
-            # but leaving this here in case we want to test against a real
-            # server without `docker compose` access in the future.
-            for attempt in tc.Retrying(
-                stop=tc.stop_after_attempt(60),
-                wait=tc.wait_fixed(2),
-                reraise=True,
-            ):
-                with attempt:
-                    run_cmd("git", "clone", str(repo_url), ".")
-
+            run_cmd("git", "clone", str(repo_url), ".")
             # jj can't tell which branch is trunk() if we clone a totally bare repo,
             # so let's pre-populate an empty commit as part of the repo creation process.
             run_cmd("git", "commit", "-m", "Initial empty repository", "--allow-empty")
