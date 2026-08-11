@@ -42,4 +42,4 @@ omit = ["*_test.py", "conftest.py", "jj_cli.py"]
 [tool.pytest.ini_options]
 #testpaths = ["tests/"]
 #python_files = ["*.py"]
-addopts = "--cov=jjpr --cov-report=term-missing"
+addopts = "--cov-report=term-missing"

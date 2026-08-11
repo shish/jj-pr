@@ -14,9 +14,9 @@ And `jj pr log` to get `jj log` output annotated with review status.
 
 ## Stability Notice
 
-Right now I'm very much building this for myself, and I haven't settled on exactly what the interface should look like, so parts may change.
+Right now I'm very much building this for myself, and I haven't settled on exactly what the interface should look like, so parts may change, internally and externally (eg command names).
 
-## Features
+# Features
 
 * `jj pr rebase` - rebase the current stack on top of remote trunk
   * `jj pr rebase --all` - rebase all local stacks on top of remote trunk
@@ -33,12 +33,12 @@ Right now I'm very much building this for myself, and I haven't settled on exact
   * `jj pr pre-commit <change id>` - run pre-commit hooks on a specific change
 * `jj pr download <pr/cr/diff>` - download a specific PR/CR/Diff from the forge
 
-## Workflow
+# Workflow
 
 * `jj pr rebase --all` - start the day by pulling remote changes and rebasing all my local stacks on top of them
 * `jj pr list` / `jj pr log` - check for any reviews which need attention
 
-### If I want to work on a new feature
+## If I want to work on a new feature
 
 * `jj new 'trunk()'` - create a new branch off of trunk (ie, `main` or `master`)
 * `vim ...` - make some changes
@@ -47,17 +47,17 @@ Right now I'm very much building this for myself, and I haven't settled on exact
 * `jj commit` - commit the next unit of work
 * `jj pr upload` - upload the two commits for review
 
-### If any of my code needs to be changed based on feedback
+## If any of my code needs to be changed based on feedback
 
 * `jj edit <change id>` - switch to the change that needs to be updated
 * `vim ...` - make the changes
 * `jj pr upload -m 'fixed the bugs'` - upload an updated version of the commit for review, with a comment listing what changed since last time
 
-#### If I want to test somebody else's code
+## If I want to test somebody else's code
 
 * `jj pr download <pr/cr/diff>` - download a specific PR/CR/Diff from the forge
 
-## Backend Notes
+# Backend Notes
 
 Backend will be automatically detected based on the git remote URL; if that doesn't work, you can set the backend explicitly with `jj config set --repo pr.forge <backend>`.
  
@@ -65,19 +65,42 @@ Backend will be automatically detected based on the git remote URL; if that does
 * [gerrit](./src/jjpr/forges/gerrit/README.md)
 * [phabricator](./src/jjpr/forges/phabricator/README.md)
 
-## Install
+# Install
 
 ```sh
 git clone https://github.com/shish/jj-pr
 cd jj-pr
 uv sync
 jj config set --user aliases.pr "['util', 'exec', '--', '$(pwd)/.venv/bin/jj-pr']"
-
-# if you want to be hacking on jj-pr itself
-uv run prek install
 ```
 
-## Integration Testing
+# Unit Testing
+
+* Tests for module `foo.py` live in `foo_test.py` next to it
+* The `demo` forge contains some hard-coded synthetic data to be able to test eg "print a list of open CRs" without needing to talk to a real forge
+* Fixtures live in `conftest.py`
+  * Top level conftest contains fixtures for eg:
+    * Creating a mock `$HOME` with pre-configured config files
+    * Creating a git repo in `/tmp`, cloning it, cd'ing into it
+  * Backend-specific conftest files contain integration-test fixtures for eg:
+    * Authenticating with a real forge
+    * Creating a test repo with a randomly generated name
+    * Pre-populating the test repo
+    * Cloning the repo, cd'ing into it
+    * Cleaning up the test repo from the forge after testing is complete
+* `jj.diagram()` can be useful to asssert the state of the repo before and after a given command
+
+```bash
+uv run pytest        # full test suite
+uv run ruff format   # formatting
+uv run ruff check    # linting
+uv run ty check      # type checking
+uv run prek install  # install pre-commit hook to automatically run checks
+```
+
+# Integration Testing
+
+Integration tests will run iff `JJPR_TEST_<FORGE>_*` variables are set
 
 ```bash
 docker compose up -d
@@ -98,13 +121,13 @@ open "http://gitea.localhost:8082/user/settings/applications"
 export JJPR_TEST_GITEA_API_TOKEN=...
 
 # Run tests against the above forges
-uv run pytest -v --no-cov src/jjpr/forges
+uv run pytest -v src/jjpr/forges
 
 # Delete test environment
 docker compose down -v
 ```
 
-## Terminology
+# Terminology
 
 Making a table because terminology is inconsistent (and occasionally mutually-exclusive) across forges. See sapling using "submit" to mean "upload to be reviewed" while gerrit uses "submit" to mean "merge into main branch", which can have dangerous and difficult to undo consequences if you mix them up...
 
