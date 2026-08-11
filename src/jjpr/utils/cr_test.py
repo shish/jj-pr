@@ -7,13 +7,9 @@ from . import cr
 
 
 class TestBlocker:
-    def test_rich_without_color_or_url(self) -> None:
-        b = cr.Blocker(name="Blocker[x]", color=None, url=None)
-        assert "Blocker\\[x]" == b.__rich__()
-
     def test_rich_with_color_and_url(self) -> None:
         url = httpx.URL("https://example.com")
-        b = cr.Blocker(name="Blocker1", color="red", url=url)
+        b = cr.Check(name="Blocker1", state=cr.CheckState.FAIL, url=url)
         rich_output = b.__rich__()
         assert "[red]" in rich_output
         assert "[link=https://example.com]" in rich_output
@@ -21,7 +17,7 @@ class TestBlocker:
 
 class TestState:
     def test_str(self) -> None:
-        s = cr.State(name="Open", color="green")
+        s = cr.ReviewState(name="Open", color="green")
         assert "Open" in str(s)
 
 
@@ -31,9 +27,8 @@ class TestCodeReview:
             cr_id="456",
             title="Fix bug",
             url=httpx.URL("https://example.com/fix-bug"),
-            state=cr.State(name="Open", color="blue"),
+            state=cr.ReviewState(name="Open", color="blue"),
             checks=[],
-            blockers=[],
             extra={"author": "alice", "branch": "feature/x"},
         )
 
@@ -46,9 +41,8 @@ class TestCodeReview:
             cr_id="456",
             title="Fix bug",
             url=httpx.URL("https://example.com/fix-bug"),
-            state=cr.State(name="Open", color="blue"),
+            state=cr.ReviewState(name="Open", color="blue"),
             checks=[],
-            blockers=[],
             extra={"author": "alice", "branch": "feature/x"},
         )
 

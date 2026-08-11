@@ -7,33 +7,43 @@ from ....utils import cr
 from .client import GerritClient
 
 
-def _check_color(state: str | None) -> str:
-    return {
-        "SUCCESSFUL": "green",
-        "NOT_RELEVANT": "green",
-        "FAILED": "red",
-    }.get(state or "", "yellow")
-
-
 def parse_cr(
     change: dict[str, t.Any],
     client: GerritClient,
     forge_url: httpx.URL,
 ) -> cr.CodeReview:
+    check2state = {
+        "SUCCESSFUL": cr.CheckState.PASS,
+        "NOT_RELEVANT": cr.CheckState.OTHER,
+        "FAILED": cr.CheckState.FAIL,
+    }
     checks = [
-        cr.Blocker(
+        cr.Check(
             name=check.get("checker_name", check["checker_uuid"]),
-            color=_check_color(check.get("state")),
-            url=httpx.URL(check["url"]) if check.get("url") else None,
+            state=check2state.get(check["state"], cr.CheckState.OTHER),
+            url=httpx.URL(check["url"]),
         )
         for check in get_checks(client, change["_number"])
         if check.get("state") not in {"SUCCESSFUL", "NOT_RELEVANT"}
     ]
+
+    blocker2state = {
+        "REJECTED": cr.CheckState.FAIL,
+        "NEED": cr.CheckState.IN_PROGRESS,
+        "UNSATISFIED": cr.CheckState.IN_PROGRESS,
+        "SATISFIED": cr.CheckState.PASS,
+        "NOT_APPLICABLE": cr.CheckState.OTHER,
+    }
     blockers = [
-        cr.Blocker(re.sub("[^A-Z]+", "", req["name"]))
+        cr.Check(
+            name=re.sub("[^A-Z]+", "", req["name"]),
+            url=forge_url,
+            state=blocker2state.get(req["status"], cr.CheckState.UNKNOWN),
+        )
         for req in change.get("submit_requirements", [])
         if req["status"] not in {"SATISFIED", "NOT_APPLICABLE"}
     ]
+
     return cr.CodeReview(
         cr_id="c" + str(change["_number"]),
         title=change["subject"],
@@ -43,8 +53,7 @@ def parse_cr(
             work_in_progress=change.get("work_in_progress", False),
             blockers=len(blockers) > 0,
         ),
-        checks=checks,
-        blockers=blockers,
+        checks=[*checks, *blockers],
         unresolved_comments=change.get("unresolved_comment_count", 0),
     )
 
@@ -70,7 +79,7 @@ def colour_state(
     is_private: bool = False,
     work_in_progress: bool = False,
     blockers: bool = False,
-) -> cr.State:
+) -> cr.ReviewState:
     if is_private:
         state = "Private"
         color = "cyan"
@@ -84,4 +93,4 @@ def colour_state(
         state = "Accepted"
         color = "green"
 
-    return cr.State(state, color=color)
+    return cr.ReviewState(state, color=color)

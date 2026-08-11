@@ -1,36 +1,43 @@
+import enum
 import typing as t
 from dataclasses import dataclass, field
 
 import httpx
 from rich.markup import escape
-from typing_extensions import override
-
-from . import text
 
 
 @dataclass
-class State:
+class ReviewState:
     name: str
     color: str
 
     def __rich__(self) -> str:
         return f"[{self.color}]{escape(self.name)}[/{self.color}]"
 
-    @override
-    def __str__(self) -> str:
-        return text.rich_str(self)
+
+class CheckState(enum.Enum):
+    PASS = "pass"
+    FAIL = "fail"
+    IN_PROGRESS = "in_progress"
+    OTHER = "other"
+    UNKNOWN = "unknown"
 
 
 @dataclass
-class Blocker:
+class Check:
     name: str
-    color: str | None = None
-    url: httpx.URL | None = None
+    url: httpx.URL | None
+    state: CheckState
 
     def __rich__(self) -> str:
-        t = escape(self.name)
-        if self.color:
-            t = f"[{self.color}]{t}[/{self.color}]"
+        color = {
+            CheckState.PASS: "green",
+            CheckState.FAIL: "red",
+            CheckState.IN_PROGRESS: "yellow",
+            CheckState.OTHER: "grey",
+            CheckState.UNKNOWN: "pink",
+        }.get(self.state, "grey")
+        t = f"[{color}]{escape(self.name)}[/{color}]"
         if self.url:
             t = f"[link={self.url}]{t}[/link]"
         return t
@@ -41,30 +48,37 @@ class CodeReview:
     cr_id: str
     title: str
     url: httpx.URL
-    state: State
-    checks: list[Blocker]
-    blockers: list[Blocker]
+    state: ReviewState
+    checks: list[Check]
     unresolved_comments: int | None = None
     extra: dict[str, str] = field(default_factory=dict)
 
-    # Short render for `jj pr log` -- `jj pr list` will render each element
-    # in a table in full-size mode
-    @override
-    def __str__(self) -> str:
+    def __rich__(self) -> str:
+        """
+        Return a short string representation of the review state, with ANSI
+        colour codes, suitable for including in `jj log` output.
+        """
         parts = []
         parts.append(self.state.__rich__())
         for check in self.checks:
-            parts.append(check.__rich__())
-        for blocker in self.blockers:
-            parts.append(blocker.__rich__())
+            icon = {
+                CheckState.PASS: "[green]✔[/green]",
+                CheckState.FAIL: "[red]✗[/red]",
+                CheckState.IN_PROGRESS: "[yellow]…[/yellow]",
+                CheckState.OTHER: "[grey]?[/grey]",
+                CheckState.UNKNOWN: "[pink]?[/pink]",
+            }[check.state]
+            parts.append(f"[link={check.url}]{icon}[/link]" if check.url else icon)
         if self.unresolved_comments:
             parts.append(f"[yellow]({self.unresolved_comments}!)[/yellow]")
-        return text.rich_str(" ".join(str(x) for x in parts if x))
+        return " ".join(parts)
 
 
 def json_default(obj: t.Any) -> t.Any:
     if isinstance(obj, httpx.URL):
         return str(obj)
+    if isinstance(obj, CheckState):
+        return str(obj.name)
     if hasattr(obj, "__dataclass_fields__"):
         return {
             field.name: getattr(obj, field.name)

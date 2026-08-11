@@ -1,16 +1,30 @@
-import hashlib
-
 import httpx
 
 from ...utils import cr, jj
 
 # A handful of canned states/checks used to annotate `jj log`, cycled through
 # deterministically based on each commit's change id.
-_DEMO_LOG_STATES: list[tuple[str, str, list[tuple[str, str]]]] = [
-    ("Draft", "cyan", []),
-    ("Needs Review", "yellow", [("lint", "green"), ("tests", "yellow")]),
-    ("Accepted", "green", [("lint", "green"), ("tests", "green")]),
-    ("Blocked", "red", [("lint", "green"), ("tests", "red")]),
+_DEMO_LOG_STATES: list[tuple[str, str, list[tuple[str, cr.CheckState]]]] = [
+    (
+        "Draft",
+        "cyan",
+        [],
+    ),
+    (
+        "Needs Review",
+        "yellow",
+        [("lint", cr.CheckState.PASS), ("tests", cr.CheckState.IN_PROGRESS)],
+    ),
+    (
+        "Accepted",
+        "green",
+        [("lint", cr.CheckState.PASS), ("tests", cr.CheckState.PASS)],
+    ),
+    (
+        "Blocked",
+        "red",
+        [("lint", cr.CheckState.PASS), ("tests", cr.CheckState.FAIL)],
+    ),
 ]
 
 
@@ -25,28 +39,21 @@ def log_cmd(remote: str, args: list[str]) -> str:
     )
 
 
-def _demo_annotation(seed: str) -> cr.CodeReview:
-    name, color, checks = _DEMO_LOG_STATES[_stable_index(seed, len(_DEMO_LOG_STATES))]
+def _demo_annotation(change_id_hex: str) -> cr.CodeReview:
+    name, color, checks = _DEMO_LOG_STATES[
+        int(change_id_hex, 16) % len(_DEMO_LOG_STATES)
+    ]
     return cr.CodeReview(
-        cr_id=str(seed),
+        cr_id=change_id_hex[:8],
         title="Fix bug",
         url=httpx.URL("https://example.com/fix-bug"),
-        state=cr.State(name, color=color),
+        state=cr.ReviewState(name, color=color),
         checks=[
-            cr.Blocker(name=check_name, color=check_color)
-            for check_name, check_color in checks
+            cr.Check(
+                name=check_name,
+                url=httpx.URL("http://example.com"),
+                state=check_state,
+            )
+            for check_name, check_state in checks
         ],
-        blockers=[],
-        extra={"author": "alice", "branch": "feature/x"},
     )
-
-
-def _check_to_str(name: str, color: str) -> str:
-    icon = {"green": "✔", "red": "✗", "yellow": "…"}.get(color, "?")
-    return f"[link=http://demo][{color}]{icon}[/{color}][/link]"
-
-
-def _stable_index(seed: str, n: int) -> int:
-    """A deterministic (but not predictable at a glance) index in [0, n)."""
-    digest = hashlib.sha256(seed.encode()).digest()
-    return int.from_bytes(digest, "big") % n

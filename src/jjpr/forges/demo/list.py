@@ -10,32 +10,28 @@ _DEMO_CRS: list[dict[str, t.Any]] = [
         "cr_id": "#101",
         "title": "Add dark mode toggle",
         "state": ("Draft", "cyan"),
-        "checks": [("lint", "red"), ("tests", "green")],
-        "blockers": [],
+        "checks": [("lint", cr.CheckState.FAIL), ("tests", cr.CheckState.PASS)],
         "unresolved_comments": 2,
     },
     {
         "cr_id": "#102",
         "title": "Fix flaky retry logic",
         "state": ("Needs Review", "yellow"),
-        "checks": [("lint", "green"), ("tests", "yellow")],
-        "blockers": [("Code-Review", "yellow")],
+        "checks": [("lint", cr.CheckState.PASS), ("tests", cr.CheckState.IN_PROGRESS)],
         "unresolved_comments": 1,
     },
     {
         "cr_id": "#103",
         "title": "Refactor auth middleware",
         "state": ("Accepted", "green"),
-        "checks": [("lint", "green"), ("tests", "green")],
-        "blockers": [],
+        "checks": [("lint", cr.CheckState.PASS), ("tests", cr.CheckState.PASS)],
         "unresolved_comments": 0,
     },
     {
         "cr_id": "#104",
         "title": "Bump dependency versions",
         "state": ("Blocked", "red"),
-        "checks": [("lint", "green"), ("tests", "red")],
-        "blockers": [("Build", "red"), ("Code-Review", "yellow")],
+        "checks": [("lint", cr.CheckState.PASS), ("tests", cr.CheckState.FAIL)],
         "unresolved_comments": 0,
     },
 ]
@@ -48,10 +44,10 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
             cr_id=demo["cr_id"],
             title=demo["title"],
             url=forge_info.forge_url.join(demo["cr_id"].lstrip("#")),
-            state=cr.State(demo["state"][0], color=demo["state"][1]),
-            checks=[cr.Blocker(name, color=color) for name, color in demo["checks"]],
-            blockers=[
-                cr.Blocker(name, color=color) for name, color in demo["blockers"]
+            state=cr.ReviewState(demo["state"][0], color=demo["state"][1]),
+            checks=[
+                cr.Check(name, url=forge_info.forge_url, state=state)
+                for name, state in demo["checks"]
             ],
             unresolved_comments=demo["unresolved_comments"],
         )

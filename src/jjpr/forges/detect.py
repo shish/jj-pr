@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Protocol
 
 from ..utils import cr, exc, git, jj
@@ -32,6 +33,10 @@ class ForgeModule(Protocol):
     def log_cmd(remote: str, args: list[str]) -> str: ...
 
 
+def _get_forge_from_env() -> str | None:
+    return os.getenv("JJ_PR_FORGE")
+
+
 def _get_forge_from_config() -> str | None:
     return jj.config_get("pr.forge")
 
@@ -56,7 +61,8 @@ def _get_forge_from_remote_url(remote: str) -> str | None:
 
 def get_forge(remote: str) -> ForgeModule:
     forge = (
-        _get_forge_from_config()
+        _get_forge_from_env()
+        or _get_forge_from_config()
         or _get_forge_from_remote_name(remote)
         or _get_forge_from_remote_url(remote)
     )

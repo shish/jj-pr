@@ -1,5 +1,3 @@
-import typing as t
-
 from ...utils import cr, jj
 from .lib import info, util
 
@@ -27,16 +25,3 @@ def log_cmd(remote: str, args: list[str]) -> str:
         '"I" ++ commit.change_id().normal_hex() ++"6a6a6964"',
         _pr_ids_to_crs,
     )
-
-
-def _check_to_str(check: dict[str, t.Any]) -> str:
-    state = check.get("state")
-    if state in {"SUCCESSFUL", "NOT_RELEVANT"}:
-        txt = "[green]✔[/green]"
-    elif state == "FAILED":
-        txt = "[red]✗[/red]"
-    else:
-        txt = "[yellow]…[/yellow]"
-    if url := check.get("url"):
-        return f"[link={url}]{txt}[/link]"
-    return txt

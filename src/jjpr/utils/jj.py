@@ -299,16 +299,15 @@ def log_with_annotations(
     pr_ids = re.findall(r"JJPR:([^:]*):JJPR", logdata)
 
     # build a map of PR IDs to their states using the provided get_pr_states function
+    id_to_state = {}
     if pr_ids:
         id_to_state = get_pr_states(pr_ids)
-    else:
-        id_to_state = {}
 
     # replace the annotations with the corresponding states
     return re.sub(
         r"JJPR:([^:]*):JJPR",
         lambda x: ", ".join(
-            str(id_to_state.get(part, "")) for part in x.group(1).split(",")
+            text.rich_str(id_to_state.get(part, "")) for part in x.group(1).split(",")
         ),
         logdata,
     )

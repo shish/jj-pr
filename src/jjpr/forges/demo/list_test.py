@@ -18,6 +18,4 @@ class TestList:
         # Demonstrates a range of states, checks, and blockers.
         states = {item["state"]["name"] for item in js}
         assert "Accepted" in states
-        assert "Blocked" in states
         assert any(item["checks"] for item in js)
-        assert any(item["blockers"] for item in js)

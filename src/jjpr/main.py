@@ -164,7 +164,6 @@ def list_command(
         table.add_column("Title", style="green")
         table.add_column("State", width=12)
         table.add_column("Checks", min_width=8)
-        table.add_column("Blockers", min_width=8)
         table.add_column("Comments", min_width=8)
         for key in sorted(all_extra_keys):
             table.add_column(key.title(), style="magenta")
@@ -175,7 +174,6 @@ def list_command(
                 f"[link={item.url}]{markup.escape(item.title)}[/link]",
                 item.state,
                 ", ".join(b.__rich__() for b in item.checks),
-                ", ".join(b.__rich__() for b in item.blockers),
                 str(item.unresolved_comments),
                 *[item.extra.get(key, "") for key in sorted(all_extra_keys)],
             )
