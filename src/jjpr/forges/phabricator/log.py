@@ -24,7 +24,7 @@ def log_cmd(remote: str, args: list[str]) -> str:
         )
 
         return {
-            "D" + rev["id"]: util.parse_cr(rev, checks_by_diff, unresolved_by_rev)
+            f"D{rev['id']}": util.parse_cr(rev, checks_by_diff, unresolved_by_rev)
             for rev in revs
         }
 
