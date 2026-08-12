@@ -59,7 +59,7 @@ class CodeReview:
         colour codes, suitable for including in `jj log` output.
         """
         parts = []
-        parts.append(self.state.__rich__())
+        parts.append(f"[link={self.url}]{self.state.__rich__()}[/link]")
         for check in self.checks:
             icon = {
                 CheckState.PASS: "[green]✔[/green]",
