@@ -1,5 +1,7 @@
 # JJ Forge Integration
 
+(For GitHub, Gerrit, and Phabricator; it should be easy to add more)
+
 # Features
 
 * `jj pr upload` - create or update a code review for each commit in the current branch
