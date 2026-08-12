@@ -76,7 +76,11 @@ def _find_pr_base_for_stack(
     return None
 
 
-def rebase_cmd(remote: str, change_ids: list[jj.ChangeId]) -> None:
+def rebase_cmd(
+    remote: str,
+    change_ids: list[jj.ChangeId],
+    skip_without_cr: bool = False,
+) -> None:
     forge_info = info.get_forge_info(remote)
     jj.git_fetch(all_remotes=True)
 
@@ -91,13 +95,16 @@ def rebase_cmd(remote: str, change_ids: list[jj.ChangeId]) -> None:
             forge_info.client, owner, name, bookmarks
         )
 
-        # If we found a merge target, use it; otherwise fall back to default
+        # If we found a merge target, use it; otherwise fall back to default (or skip)
         if merge_target:
             base = jj.revset(f"{merge_target}@{forge_info.remote}")
             log.info(
                 f"Found PR merge target '{merge_target}' for {root}, "
                 f"rebasing descendants onto {base}"
             )
+        elif skip_without_cr:
+            log.info(f"No PR found for descendants of {root}, skipping")
+            continue
         else:
             base = jj.revset(f"{forge_info.default_merge_target}@{forge_info.remote}")
             log.info(

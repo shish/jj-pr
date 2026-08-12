@@ -6,7 +6,11 @@ from .lib import info
 log = logging.getLogger(__name__)
 
 
-def rebase_cmd(remote: str, change_ids: list[jj.ChangeId]) -> None:
+def rebase_cmd(
+    remote: str,
+    change_ids: list[jj.ChangeId],
+    skip_without_cr: bool = False,
+) -> None:
     forge_info = info.get_forge_info(remote)
     jj.git_fetch(all_remotes=True)
     for root in change_ids:

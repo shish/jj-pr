@@ -108,17 +108,23 @@ def upload_command(
 @app.command("rebase")
 def rebase_command(
     ctx: typer.Context,
-    all: bool = typer.Option(
+    all_prs: bool = typer.Option(
         False,
-        "--all",
+        "--all-prs",
         "-a",
-        help="Rebase all local branches; if not set, only rebase the current branch",
+        help="Rebase all branches that have an associated CR; skip branches without one",
+    ),
+    all_branches: bool = typer.Option(
+        False,
+        "--all-branches",
+        "-A",
+        help="Rebase all branches; use the default merge target for those without a CR",
     ),
     revset: str | None = typer.Argument(None, help="Revset to rebase"),
 ) -> None:
     """Pull from remote and rebase current stack."""
     go = t.cast(GlobalOptions, ctx.obj)
-    if all:
+    if all_prs or all_branches:
         revset = "mutable()"
     elif revset:
         pass  # revset = revset
@@ -126,7 +132,7 @@ def rebase_command(
         revset = "@"
     roots = jj.change_ids(jj.revset(f"roots(mutable()::{revset})"))
     log.info(f"Rebasing revset: {revset} ({roots})")
-    go.backend.rebase_cmd(go.remote, roots)
+    go.backend.rebase_cmd(go.remote, roots, skip_without_cr=all_prs)
 
 
 @app.command("download")
