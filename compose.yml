@@ -20,8 +20,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "phabricator"
       MYSQL_DATABASE: "phabricator"
-    volumes:
-      - phab_mysql:/var/lib/mysql
     healthcheck:
       test:
         [
@@ -42,11 +40,11 @@ services:
     image: phabricator/phabricator:latest
     ports:
       - "8081:80"
-    volumes:
-      - phab_repo:/var/lib/repo
     depends_on:
       phabricator-mysql:
         condition: service_healthy
+    volumes:
+      - ./scripts:/scripts:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://phab.localhost/status/"]
       interval: 10s
@@ -70,9 +68,7 @@ services:
             bin/config set environment.append-paths '["/usr/lib/git-core"]'
             # install db
             bin/storage upgrade --force
+            # create admin user with fixed API token and VCS HTTP password
+            php /scripts/phab-init.php
             # start backend daemons
             runuser -u www-data bin/phd start
-
-volumes:
-  phab_repo:
-  phab_mysql:

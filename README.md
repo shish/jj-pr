@@ -92,40 +92,25 @@ uv run prek install  # install pre-commit hook to automatically run checks
 
 # Integration Testing
 
-Integration tests will run iff `JJPR_TEST_<FORGE>_*` variables are set
-
 ```bash
-docker compose up -d
-docker compose ps    # wait and repeat until containers are healthy
-
-# Create admin user, get a token from settings
-open "http://phab.localhost:8081/settings/user/admin/page/apitokens/"
-export JJPR_TEST_PHABRICATOR_API_TOKEN=...
-open "http://phab.localhost:8081/settings/user/admin/page/vcspassword/"
-export JJPR_TEST_PHABRICATOR_VCS_PASSWORD=...
-
-# Run just the integration tests for a specific forge
-uv run pytest -m "integration and gerrit"
-
-# Run all the integration tests
-uv run pytest -m integration
-
-# Delete test environment
-docker compose down -v
+docker compose up -d          # Create forges with pre-set users
+docker compose ps             # Wait until containers are healthy
+uv run pytest -m integration  # Run all the integration tests
+docker compose down -v        # Delete test environment
 ```
 
 # Terminology
 
 Making a table because terminology is inconsistent (and occasionally mutually-exclusive) across forges. See sapling using "submit" to mean "upload to be reviewed" while gerrit uses "submit" to mean "merge into main branch", which can have dangerous and difficult to undo consequences if you mix them up...
 
-| Concept | JJ-PR | Sapling | GitHub | Gerrit | Phabricator |
-| ------- | ----- | ------- | ------ | ------ | ----------  |
-| Unit of work | change | commit | commit | change | diff | change |
-| Unit of review | branch / change | - | branch | change | revision | branch / change |
-| Send for review | `jj pr upload` | `sl pr submit` | `gh pr create` | `git push` | `arc diff` |
-| Check code to be reviewed | `jj pr download` | `sl pr pull` | `gh pr checkout` | `git fetch` | `arc patch` |
-| Merge reviewed code | - | - | `gh pr merge`, `--rebase` / `--squash` / `--merge` flags | "submit" button (server-side rebase) | `arc land` (client-side rebase) |
-| List open reviews | `jj pr list ` | `sl pr list` | `gh pr list` | - | `arc list` |
+| Concept                | JJ-PR | Sapling | GitHub | Gerrit | Phabricator |
+| ---------------------- | ----- | ------- | ------ | ------ | ----------  |
+| Unit of work           | change | commit | commit | change | diff | change |
+| Unit of review         | branch / change | - | branch | change | revision | branch / change |
+| Send for review        | `jj pr upload` | `sl pr submit` | `gh pr create` | `git push` | `arc diff` |
+| Fetch for review       | `jj pr download` | `sl pr pull` | `gh pr checkout` | `git fetch` | `arc patch` |
+| Merge reviewed code    | - | - | `gh pr merge`, `--rebase` / `--squash` / `--merge` flags | "submit" button (server-side rebase)  | `arc land` (client-side rebase) |
+| List open reviews      | `jj pr list ` | `sl pr list` | `gh pr list` | - | `arc list` |
 | Log with review status | `jj pr log` | `sl ssl` | - | - | - |
-| CI/CD status | Checks | - | Checks | Checks | Builds |
-| Merge Blockers | Blockers | - | Required Checks, Required Reviews | Submit Requirements | - |
+| CI/CD status           | Checks | - | Checks | Checks | Builds |
+| Merge Blockers         | Blockers | - | Required Checks, Required Reviews | Submit Requirements | - |

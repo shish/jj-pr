@@ -3,6 +3,7 @@ import logging
 import re
 import socket
 import typing as t
+from pathlib import Path
 
 from ...utils import exc, exec, jj
 from . import arc
@@ -113,8 +114,9 @@ def _push_change_to_differential_via_subprocess(
     change_id: jj.ChangeId,
     pre_commit: bool = True,
 ) -> client.PhId:
-    with jj.with_edit(change_id):
-        exec.run("arc", "lint", "--apply-patches")
+    if Path(".arclint").exists():
+        with jj.with_edit(change_id):
+            exec.run("arc", "lint", "--apply-patches")
     with jj.with_new(change_id):
         text = exec.run("arc", "diff", "HEAD^", "--only", "--json")
     # arc logs go to stdout...

@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import random
 import shutil
 import string
@@ -19,10 +18,7 @@ log = logging.getLogger(__name__)
 
 @pytest.fixture(scope="class")
 def url() -> httpx.URL:
-    """Get the Phabricator URL from the environment variable or use a default."""
-    return httpx.URL(
-        os.getenv("JJPR_TEST_PHABRICATOR_URL", "http://phab.localhost:8081")
-    )
+    return httpx.URL("http://phab.localhost:8081")
 
 
 @pytest.fixture(scope="class")
@@ -31,20 +27,14 @@ def session(
     url: httpx.URL,
 ) -> t.Generator[client.PhabricatorClient, None, None]:
     # configure .arcrc
-    phabricator_token = os.getenv("JJPR_TEST_PHABRICATOR_API_TOKEN")
-    if not phabricator_token:
-        pytest.skip("JJPR_TEST_PHABRICATOR_API_TOKEN not set, skipping tests")
-
-    data = {"hosts": {str(url) + "/api/": {"token": phabricator_token}}}
+    data = {
+        "hosts": {str(url) + "/api/": {"token": "cli-aaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}
+    }
     rc = Path(tmp_home) / ".arcrc"
     rc.write_text(json.dumps(data))
     rc.chmod(0o600)
 
-    vcs_password = os.getenv("JJPR_TEST_PHABRICATOR_VCS_PASSWORD")
-    if not vcs_password:
-        pytest.skip("JJPR_TEST_PHABRICATOR_VCS_PASSWORD not set, skipping tests")
-
-    netrc.write(url.host, "admin", vcs_password)
+    netrc.write(url.host, "admin", "test")
 
     # configure http client with persistent token
     sess = client.PhabricatorClient(url)
@@ -111,6 +101,13 @@ def repo(
             run_cmd("git", "clone", str(repo_url), ".")
             # jj can't tell which branch is trunk() if we clone a totally bare repo,
             # so let's pre-populate an empty commit as part of the repo creation process.
+            Path(".arcconfig").write_text(
+                json.dumps({
+                    "phabricator.uri": str(url),
+                    "repository.callsign": callsign,
+                })
+            )
+            run_cmd("git", "add", ".arcconfig")
             run_cmd("git", "commit", "-m", "Initial empty repository", "--allow-empty")
             run_cmd("git", "push")
 

@@ -29,10 +29,15 @@ def get_forge_info(remote: str) -> ForgeInfo[PhabricatorClient]:
     if callsign := repo_config.get("repository.callsign"):
         f.project_id = callsign
     else:
-        f.project_id = f.client.call(
+        repos = f.client.call(
             "diffusion.repository.search",
             constraints={"uris": [str(f.remote_url)]},
-        )["data"][0]["fields"]["callsign"]
+        )["data"]
+        if not repos:
+            raise ValueError(
+                f"Could not find a Phabricator repository for {f.remote_url}"
+            )
+        f.project_id = repos[0]["fields"]["callsign"]
 
     if merge_target := repo_config.get("arc.land.onto.default"):
         f.default_merge_target = merge_target
