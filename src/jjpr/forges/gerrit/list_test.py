@@ -24,7 +24,7 @@ class TestList:
         assert text
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 1
-        assert js[0]["title"]["text"] == "Test commit 1"
+        assert js[0]["title"] == "Test commit 1"
         assert js[0]["cr_id"].startswith("c")
 
     def test_list_multiple(self, clone: Path):
@@ -40,6 +40,6 @@ class TestList:
         assert text
         js = json.loads(run_cmd("jj", "pr", "--format", "json", "list"))
         assert len(js) == 2
-        titles = {item["title"]["text"] for item in js}
+        titles = {item["title"] for item in js}
         assert "Test commit 1" in titles
         assert "Test commit 2" in titles

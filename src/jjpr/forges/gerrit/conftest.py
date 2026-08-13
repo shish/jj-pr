@@ -1,4 +1,3 @@
-import os
 import random
 import string
 import typing as t
@@ -14,8 +13,7 @@ from .lib import client
 
 @pytest.fixture(scope="class")
 def url() -> httpx.URL:
-    """Get the Gerrit URL from the environment variable or use a default."""
-    return httpx.URL(os.getenv("JJPR_TEST_GERRIT_URL", "http://gerrit.localhost:8080"))
+    return httpx.URL("http://gerrit.localhost:8080")
 
 
 @pytest.fixture(scope="class")
@@ -24,11 +22,7 @@ def session(
     url: httpx.URL,
 ) -> t.Generator[client.GerritClient, None, None]:
     # configure .netrc
-    gerrit_token = os.getenv("JJPR_TEST_GERRIT_API_TOKEN")
-    if not gerrit_token:
-        pytest.skip("JJPR_TEST_GERRIT_API_TOKEN not set, skipping tests")
-
-    netrc.write(url.host, "admin", gerrit_token)
+    netrc.write(url.host, "admin", "secret")
 
     sess = client.GerritClient(url)
 

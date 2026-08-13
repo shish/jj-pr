@@ -7,13 +7,6 @@ services:
       - "29418:29418"
     environment:
       CANONICAL_WEB_URL: "http://gerrit.localhost:8080/"
-      GERRIT_INIT_ARGS: |
-        --install-plugin=download-commands
-        --install-plugin=replication
-        --install-plugin=webhook-events
-      GERRIT_HEAPDUMP: "false"
-    volumes:
-      - gerrit_data:/var/gerrit
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 10s
@@ -81,6 +74,5 @@ services:
             runuser -u www-data bin/phd start
 
 volumes:
-  gerrit_data:
   phab_repo:
   phab_mysql:

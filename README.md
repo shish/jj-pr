@@ -99,10 +99,6 @@ docker compose up -d
 docker compose ps    # wait and repeat until containers are healthy
 
 # Create admin user, get a token from settings
-open "http://gerrit.localhost:8080/settings/#HTTPCredentials"
-export JJPR_TEST_GERRIT_API_TOKEN=...
-
-# Create admin user, get a token from settings
 open "http://phab.localhost:8081/settings/user/admin/page/apitokens/"
 export JJPR_TEST_PHABRICATOR_API_TOKEN=...
 open "http://phab.localhost:8081/settings/user/admin/page/vcspassword/"
