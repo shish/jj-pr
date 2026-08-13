@@ -60,11 +60,11 @@ def _run_jjpr_cmd(args: list[str]) -> str:
     from .. import main
 
     runner = CliRunner()
-    result = runner.invoke(main.app, args)
+    result = runner.invoke(main.app, args, catch_exceptions=False)
     if result.exit_code != 0:  # pragma: no cover
         raise subprocess.CalledProcessError(
             returncode=result.exit_code,
             cmd=["jj", "pr"] + list(args),
             output=result.output,
         )
-    return result.output.strip()
+    return result.stdout.strip()
