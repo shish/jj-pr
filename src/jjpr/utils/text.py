@@ -1,6 +1,6 @@
 import re
-from io import StringIO
 import typing as t
+from io import StringIO
 
 from rich.console import Console
 

@@ -102,10 +102,12 @@ def repo(
             # jj can't tell which branch is trunk() if we clone a totally bare repo,
             # so let's pre-populate an empty commit as part of the repo creation process.
             Path(".arcconfig").write_text(
-                json.dumps({
-                    "phabricator.uri": str(url),
-                    "repository.callsign": callsign,
-                })
+                json.dumps(
+                    {
+                        "phabricator.uri": str(url),
+                        "repository.callsign": callsign,
+                    }
+                )
             )
             run_cmd("git", "add", ".arcconfig")
             run_cmd("git", "commit", "-m", "Initial empty repository", "--allow-empty")
