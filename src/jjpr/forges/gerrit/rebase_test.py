@@ -1,16 +1,27 @@
 from pathlib import Path
 from textwrap import dedent
+from unittest import mock
 
 import httpx
 import pytest
 
 from ...conftest import run_cmd, tmp_cwd
 from ...utils import jj
+from . import rebase
 
 pytestmark = [pytest.mark.integration, pytest.mark.gerrit]
 
 
 class TestRebase:
+    def test_get_gerrit_branch_converts_root_to_normal_hex(self):
+        forge_info = mock.MagicMock()
+        forge_info.client.get.return_value.json.return_value = {"branch": "master"}
+
+        branch = rebase._get_gerrit_branch(forge_info, jj.ChangeId("z" * 32), "origin")
+
+        assert branch == "master@origin"
+        forge_info.client.get.assert_called_once_with(f"changes/I{'0' * 32}6a6a6964")
+
     def test_rebase_with_private_changes(self, clone: Path):
         output = run_cmd("jj", "pr", "rebase")
         assert "Rebasing" in output

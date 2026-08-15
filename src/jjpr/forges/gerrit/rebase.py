@@ -7,6 +7,11 @@ from .lib import client, info
 
 log = logging.getLogger(__name__)
 
+_REVERSE_HEX_TO_NORMAL_HEX = str.maketrans(
+    "zyxwvutsrqponmlk",
+    "0123456789abcdef",
+)
+
 
 def rebase_cmd(
     remote: str,
@@ -34,7 +39,7 @@ def _get_gerrit_branch(
 ) -> str | None:
     """Return '{branch}@{remote}' for the given Gerrit Change-Id, or None if not found."""
     try:
-        gid = "I" + root + "6a6a6964"
+        gid = "I" + root.translate(_REVERSE_HEX_TO_NORMAL_HEX) + "6a6a6964"
         change_data = forge_info.client.get(f"changes/{gid}").json()
     except httpx.HTTPStatusError:
         return None
