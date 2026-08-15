@@ -93,10 +93,9 @@ uv run prek install  # install pre-commit hook to automatically run checks
 # Integration Testing
 
 ```bash
-docker compose up -d          # Create forges with pre-set users
-docker compose ps             # Wait until containers are healthy
+docker compose up --wait      # Create forges with pre-set users
 uv run pytest -m integration  # Run all the integration tests
-docker compose down -v        # Delete test environment
+docker compose down           # Delete test environment
 ```
 
 # Terminology
