@@ -28,10 +28,10 @@ class TestRebase:
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
         run_cmd("jj", "pr", "upload")
-        assert jj.diagram() == dedent("""
+        assert jj.diagram(bookmarks=True) == dedent("""
             @
             o  Test commit 1
-            +  Initial empty repository
+            +  Initial empty repository ; master
         """)
 
         # While the change is being reviewed, `main` moves forwards
@@ -41,25 +41,25 @@ class TestRebase:
             run_cmd("jj", "describe", "-m", "Advance main")
             run_cmd("jj", "b", "a")
             run_cmd("jj", "git", "push")
-            assert jj.diagram() == dedent("""
+            assert jj.diagram(bookmarks=True) == dedent("""
                 @
-                +  Advance main
+                +  Advance main ; master
             """)
 
         # Fetch to see the new main has moved forwards
         run_cmd("jj", "git", "fetch")
-        assert jj.diagram() == dedent("""
+        assert jj.diagram(bookmarks=True) == dedent("""
             @
             o  Test commit 1
-            | +  Advance main
+            | +  Advance main ; master
             |/
             +  Initial empty repository
         """)
 
         # Rebase on top of the new main
         run_cmd("jj", "pr", "rebase")
-        assert jj.diagram() == dedent("""
+        assert jj.diagram(bookmarks=True) == dedent("""
             @
             o  Test commit 1
-            +  Advance main
+            +  Advance main ; master
         """)

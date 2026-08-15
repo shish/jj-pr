@@ -317,7 +317,13 @@ def log_with_annotations(
     )
 
 
-def diagram(descr: str = "self.description()") -> str:
+def diagram(bookmarks: bool = False) -> str:
+    bookmarks_part = 'self.bookmarks().map(|b| b.name()).join(",")' if bookmarks else ""
+    descr = f'''separate(
+        " ; ",
+        self.description().first_line(),
+        {bookmarks_part}
+    )'''
     d = run("log", "-T", descr, "--config", "ui.graph.style=ascii", cap=True)
     d = d[:-4]  # remove trailing \n|\n~
     return f"\n{d}\n"
