@@ -318,7 +318,7 @@ def log_with_annotations(
 
 
 def diagram(descr: str = "self.description()") -> str:
-    d = run("log", "-T", f"{descr}", "--config", "ui.graph.style=ascii", cap=True)
+    d = run("log", "-T", descr, "--config", "ui.graph.style=ascii", cap=True)
     d = d[:-4]  # remove trailing \n|\n~
     return f"\n{d}\n"
 

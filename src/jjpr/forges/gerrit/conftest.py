@@ -54,6 +54,26 @@ def repo(
             f"projects/{repo_name}",
             json={"create_empty_commit": True},
         )
+        # enable force-pushes
+        session.post(
+            f"projects/{repo_name}/access",
+            json={
+                "add": {
+                    "refs/heads/*": {
+                        "permissions": {
+                            "push": {
+                                "rules": {
+                                    "global:Registered-Users": {
+                                        "action": "ALLOW",
+                                        "force": True,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        )
     except Exception as e:
         pytest.skip(f"Gerrit repo creation error: {url}: {e}")
 

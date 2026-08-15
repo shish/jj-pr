@@ -1,4 +1,5 @@
 from pathlib import Path
+from textwrap import dedent
 
 import httpx
 import pytest
@@ -23,24 +24,42 @@ class TestRebase:
         assert "Rebasing" in output
 
     def test_rebase_onto_updated_main(self, clone: Path, repo: httpx.URL):
-        pytest.skip(
-            "Skipping test because I can't figure out how to allow pushing "
-            "direct to `main` on the test repo o.o"
-        )
-
+        # Create a change and upload for review
         (clone / "test_file.txt").write_text("Test content")
         run_cmd("jj", "commit", "-m", "Test commit 1")
         run_cmd("jj", "pr", "upload")
+        assert jj.diagram() == dedent("""
+            @
+            o  Test commit 1
+            +  Initial empty repository
+        """)
 
+        # While the change is being reviewed, `main` moves forwards
         with tmp_cwd() as admin_clone:
-            run_cmd("git", "clone", str(repo), ".")
+            run_cmd("jj", "git", "clone", str(repo), ".")
             (admin_clone / "main_advance.txt").write_text("Main advance content")
-            run_cmd("git", "add", ".")
-            run_cmd("git", "commit", "-m", "Advance main")
-            run_cmd("git", "push", "origin", "HEAD:refs/heads/main", cap=False)
+            run_cmd("jj", "describe", "-m", "Advance main")
+            run_cmd("jj", "b", "a")
+            run_cmd("jj", "git", "push")
+            assert jj.diagram() == dedent("""
+                @
+                +  Advance main
+            """)
 
-        run_cmd("jj", "git", "fetch", "origin")
-        output = run_cmd("jj", "pr", "rebase")
-        assert "Rebasing" in output
-        assert jj.description_of("@") == "Test commit 1"
-        assert jj.description_of("@-") == "Advance main"
+        # Fetch to see the new main has moved forwards
+        run_cmd("jj", "git", "fetch")
+        assert jj.diagram() == dedent("""
+            @
+            o  Test commit 1
+            | +  Advance main
+            |/
+            +  Initial empty repository
+        """)
+
+        # Rebase on top of the new main
+        run_cmd("jj", "pr", "rebase")
+        assert jj.diagram() == dedent("""
+            @
+            o  Test commit 1
+            +  Advance main
+        """)
