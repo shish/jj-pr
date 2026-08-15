@@ -34,7 +34,7 @@ def session(
     rc.write_text(json.dumps(data))
     rc.chmod(0o600)
 
-    netrc.write(url.host, "admin", "test")
+    netrc.write(url.host, "admin", "secret")
 
     # configure http client with persistent token
     sess = client.PhabricatorClient(url)

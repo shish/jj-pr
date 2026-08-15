@@ -8,11 +8,11 @@ services:
     environment:
       CANONICAL_WEB_URL: "http://gerrit.localhost:8080/"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
-      interval: 10s
+      test: "curl --silent -f http://admin:secret@localhost:8080/a/accounts/me"
+      start_period: 120s
+      start_interval: 10s
+      interval: 120s
       timeout: 5s
-      retries: 30
-      start_period: 60s
 
   # Phabricator
   phabricator-mysql:
@@ -34,7 +34,6 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 30
 
   phabricator:
     image: phabricator/phabricator:latest
@@ -46,11 +45,11 @@ services:
     volumes:
       - ./scripts:/scripts:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://phab.localhost/status/"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
+      test: "curl --silent -f http://phab.localhost:80/api/user.whoami -d api.token=cli-aaaaaaaaaaaaaaaaaaaaaaaaaaaa | grep -q verified"
       start_period: 120s
+      start_interval: 10s
+      interval: 120s
+      timeout: 5s
     post_start:
       - command:
           - sh

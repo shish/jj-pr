@@ -8,10 +8,10 @@
  *
  * Credentials created:
  *   Username:       admin
- *   Email:          admin@localhost
- *   Login Password: test
+ *   Email:          admin@example.com
+ *   Login Password: secret
  *   API Token:      cli-aaaaaaaaaaaaaaaaaaaaaaaaaaaa
- *   VCS Password:   test
+ *   VCS Password:   secret
  */
 
 require_once '/opt/phabricator/scripts/init/init-script.php';
@@ -19,11 +19,11 @@ require_once '/opt/phabricator/scripts/init/init-script.php';
 PhabricatorEnv::initializeWebEnvironment();
 
 $username    = 'admin';
-$email       = 'admin@localhost';
+$email       = 'admin@example.com';
 $realname    = 'Admin User';
-$login_pass  = 'test';
+$login_pass  = 'secret';
 $api_token   = 'cli-aaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-$vcs_pass    = 'test';
+$vcs_pass    = 'secret';
 
 $actor = PhabricatorUser::getOmnipotentUser();
 
