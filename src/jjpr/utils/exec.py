@@ -46,11 +46,14 @@ def run(*args: str, cap: bool = True) -> str | None:
         else:
             return None
     except subprocess.CalledProcessError as e:
-        log.info(f"run({shlex.join(cmd)}) failed")
-        log.debug(f"Return code: {e.returncode}")
+        msg = f"run({shlex.join(cmd)}) failed ({e.returncode})"
+        log.info(msg)
+        e.add_note(msg)
         if cap:
             log.debug(f"stdout: {e.stdout.strip()}")
             log.debug(f"stderr: {e.stderr.strip()}")
+            e.add_note(f"stdout: {e.stdout.strip()}")
+            e.add_note(f"stderr: {e.stderr.strip()}")
         raise
 
 

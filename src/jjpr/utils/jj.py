@@ -39,7 +39,11 @@ def run(*args: str, cap: bool = True) -> str | None:
     try:
         return exec.run("jj", *args, cap=cap)  # type: ignore
     except subprocess.CalledProcessError as e:
-        raise JjError(f"Failed to run {shlex.join(['jj', *args])!r}") from e
+        e2 = JjError(f"Failed to run {shlex.join(['jj', *args])!r} ({e.returncode})")
+        if cap:
+            e2.add_note(f"stdout: {text.remove_ansi(e.stdout.strip())}")
+            e2.add_note(f"stderr: {text.remove_ansi(e.stderr.strip())}")
+        raise e2 from e
 
 
 #######################################################################
