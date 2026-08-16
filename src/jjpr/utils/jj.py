@@ -6,7 +6,7 @@ import subprocess
 import typing as t
 from contextlib import contextmanager
 
-from . import cr, exec, text
+from . import cr, exc, exec, text
 
 #######################################################################
 # Utilities
@@ -174,6 +174,18 @@ def commit_id(change_id: ChangeId) -> str:
     Get the commit ID for a given change ID
     """
     return change_info(change_id, "self.commit_id()")
+
+
+def change_to_push_bookmark(change_id: ChangeId) -> str:
+    push_bookmark_template = config_get("templates.git_push_bookmark")
+    if not push_bookmark_template:
+        raise exc.UserError(
+            "Missing configuration: templates.git_push_bookmark. "
+            "Please set it to a template for the bookmark name to "
+            "use when pushing changes."
+        )
+
+    return change_info(change_id, push_bookmark_template)
 
 
 #######################################################################
