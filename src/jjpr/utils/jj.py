@@ -209,7 +209,7 @@ def change_ids(r: RevSet) -> list[ChangeId]:
         "--no-graph",
         "--reversed",
         "-T",
-        'self.change_id() ++ "\\n"',
+        'if(self.divergent(), self.change_id() ++ format_change_offset(self), self.change_id()) ++ "\\n"',
         cap=True,
     ).split("\n")
     return [ChangeId(line) for line in lines if line]
