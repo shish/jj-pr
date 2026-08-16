@@ -43,7 +43,7 @@ def run(*args: str, cap: bool = True) -> str | None:
         if cap:
             e2.add_note(f"stdout: {text.remove_ansi(e.stdout.strip())}")
             e2.add_note(f"stderr: {text.remove_ansi(e.stderr.strip())}")
-        raise e2 from e
+        raise e2 from None
 
 
 #######################################################################
