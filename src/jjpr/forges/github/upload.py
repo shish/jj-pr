@@ -1,9 +1,46 @@
 import logging
+import typing as t
 
 from ...utils import exec, git, jj
 from .lib import client, info
 
 log = logging.getLogger(__name__)
+
+
+PR_FIELDS = """
+    number
+    title
+    body
+    state
+    stack {
+        id
+        number
+        baseRefName
+    }
+    headRefName
+    baseRefName
+    headRepository {
+        id
+        name
+    }
+    headRepositoryOwner {
+        id
+        login
+        ...on User {name}
+    }
+    isCrossRepository
+    maintainerCanModify
+    id
+"""
+
+
+class UploadPr(t.TypedDict):
+    id: str
+    number: client.PrNum
+    title: str
+    body: str
+    stack: dict[str, t.Any] | None
+    baseRefName: str
 
 
 def upload_cmd(
@@ -39,7 +76,7 @@ def upload_cmd(
 
     # Check if any of the changes already have an open PR,
     # and those PRs are part of a stack
-    change_to_existing_pr: dict[jj.ChangeId, client.PrJson] = {}
+    change_to_existing_pr: dict[jj.ChangeId, UploadPr] = {}
     existing_stacks: list[int] = []
     for change_id in changes:
         my_branch = jj.change_to_push_bookmark(change_id)
@@ -66,51 +103,26 @@ def upload_cmd(
             base_branch = jj.change_to_push_bookmark(parent_id)
 
         if existing_pr := change_to_existing_pr.get(change_id):
-            new_stack.append(
-                _update_pr(forge_info, change_id, existing_pr, base_branch, message)
-            )
+            pr = _update_pr(forge_info, change_id, existing_pr, base_branch, message)
         else:
-            new_stack.append(
-                _create_pr(forge_info, change_id, my_branch, base_branch, draft)
-            )
+            pr = _create_pr(forge_info, change_id, my_branch, base_branch, draft)
+        new_stack.append(pr["number"])
 
     # Link the existing and new PRs into a stack
     exec.run("gh", "stack", "link", *[str(pr) for pr in new_stack])
 
 
-def _get_pr(forge_info: info.GitHubInfo, head_ref: str) -> client.PrJson | None:
-    query = """
-      query GetPullRequestByHeadRef($owner: String!, $name: String!, $headRef: String!, $states: [PullRequestState!]) {
-        repository(owner: $owner, name: $name) {
-          pullRequests(headRefName: $headRef, states: $states, first: 1) {
-            nodes {
-              number
-              title
-              body
-              state
-              stack {
-                id
-                number
-                baseRefName
-              }
-              headRefName
-              baseRefName
-              headRepository {
-                id
-                name
-              }
-              headRepositoryOwner {
-                id
-                login
-                ...on User {name}
-              }
-              isCrossRepository
-              maintainerCanModify
-              id
-            }
-          }
-        }
-      }
+def _get_pr(forge_info: info.GitHubInfo, head_ref: str) -> UploadPr | None:
+    query = f"""
+        query GetPullRequestByHeadRef($owner: String!, $name: String!, $headRef: String!, $states: [PullRequestState!]) {{
+            repository(owner: $owner, name: $name) {{
+                pullRequests(headRefName: $headRef, states: $states, first: 1) {{
+                    nodes {{
+                        {PR_FIELDS}
+                    }}
+                }}
+            }}
+        }}
     """
     variables = {
         "owner": forge_info.repo_owner,
@@ -129,19 +141,19 @@ def _create_pr(
     head_ref: str,
     base_ref: str,
     draft: bool,
-) -> client.PrNum:
+) -> UploadPr:
     descr = jj.change_info(change_id, "self.description()")
     title, body = descr.split("\n", 1) if "\n" in descr else (descr, "")
 
     result = forge_info.client.graphql(
-        """
-          mutation CreatePullRequest($input: CreatePullRequestInput!) {
-            createPullRequest(input: $input) {
-              pullRequest {
-                number
-              }
-            }
-          }
+        f"""
+            mutation CreatePullRequest($input: CreatePullRequestInput!) {{
+                createPullRequest(input: $input) {{
+                    pullRequest {{
+                        {PR_FIELDS}
+                    }}
+                }}
+            }}
         """,
         {
             "input": {
@@ -155,17 +167,18 @@ def _create_pr(
         },
     )
     pr = result["createPullRequest"]["pullRequest"]
-    print(f"Created pull request #{pr['number']} for {head_ref} -> {base_ref}")
-    return pr["number"]
+    log.info(f"PR #{pr['number']} = {head_ref} -> {base_ref}")
+    print(f"Created pull request #{pr['number']} ({title})")
+    return pr
 
 
 def _update_pr(
     forge_info: info.GitHubInfo,
     change_id: jj.ChangeId,
-    pr: client.PrJson,
+    pr: UploadPr,
     base_ref: str,
     message: str | None,
-) -> client.PrNum:
+) -> UploadPr:
     descr = jj.change_info(change_id, "self.description()")
     title, body = descr.split("\n", 1) if "\n" in descr else (descr, "")
 
@@ -179,14 +192,14 @@ def _update_pr(
 
     if changes:
         result = forge_info.client.graphql(
-            """
-            mutation UpdatePullRequest($input: UpdatePullRequestInput!) {
-                updatePullRequest(input: $input) {
-                    pullRequest {
-                        number
-                    }
-                }
-            }
+            f"""
+                mutation UpdatePullRequest($input: UpdatePullRequestInput!) {{
+                    updatePullRequest(input: $input) {{
+                        pullRequest {{
+                            {PR_FIELDS}
+                        }}
+                    }}
+                }}
             """,
             {"input": {"pullRequestId": pr["id"], **changes}},
         )
@@ -198,7 +211,7 @@ def _update_pr(
         # if message is not None:
         #    ...
 
-        print(f"Updated PR #{updated_pr['number']}")
+        print(f"Updated PR #{updated_pr['number']} ({title})")
     else:
-        print(f"No changes needed for PR #{pr['number']}")
-    return pr["number"]
+        print(f"No changes needed for PR #{pr['number']} ({title})")
+    return pr
