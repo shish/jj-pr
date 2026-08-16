@@ -12,7 +12,6 @@ def rebase_cmd(
     skip_without_cr: bool = False,
 ) -> None:
     forge_info = info.get_forge_info(remote)
-    jj.git_fetch(all_remotes=True)
     for root in change_ids:
         base = jj.revset(f"{forge_info.default_merge_target}@{remote}")
         print(f"Rebasing {root} onto {base}")
