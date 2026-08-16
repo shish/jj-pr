@@ -81,8 +81,6 @@ def rebase_cmd(
     skip_without_cr: bool = False,
 ) -> None:
     forge_info = info.get_forge_info(remote)
-    jj.git_fetch(all_remotes=True)
-
     owner, name = forge_info.project_id.split("/")
 
     for root in change_ids:

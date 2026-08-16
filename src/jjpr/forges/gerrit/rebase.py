@@ -19,7 +19,6 @@ def rebase_cmd(
     skip_without_cr: bool = False,
 ) -> None:
     forge_info = info.get_forge_info(remote)
-    jj.git_fetch(all_remotes=True)
     for root in change_ids:
         if branch := _get_gerrit_branch(forge_info, root, remote):
             base = jj.revset(branch)

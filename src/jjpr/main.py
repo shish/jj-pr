@@ -124,6 +124,11 @@ def rebase_command(
 ) -> None:
     """Pull from remote and rebase current stack."""
     go = t.cast(GlobalOptions, ctx.obj)
+
+    # fetch before figuring out what to rebase, because the fetch might
+    # reveal that some of our commits were landed and are now immutable
+    jj.git_fetch(all_remotes=True)
+
     if all_prs or all_branches:
         revset = "mutable()"
     elif revset:
