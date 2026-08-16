@@ -1,10 +1,17 @@
+import typing as t
+
 import httpx
 
 from ...base import ForgeInfo
 
 
-def get_forge_info(remote: str) -> ForgeInfo[None]:
-    f = ForgeInfo[None](remote)
-    f.forge_url = httpx.URL("https://demo.example.com")
-    f.project_id = "demo/repo"
-    return f
+@t.final
+class DemoInfo(ForgeInfo[None]):
+    def __init__(self, remote: str):
+        super().__init__(remote)
+        self.forge_url = httpx.URL("https://demo.example.com")
+        self.project_id = "demo/repo"
+
+
+def get_forge_info(remote: str) -> DemoInfo:
+    return DemoInfo(remote)

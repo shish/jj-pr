@@ -6,30 +6,37 @@ from ...base import ForgeInfo
 from .client import GitHubClient
 
 
-def get_forge_info(remote: str) -> ForgeInfo[GitHubClient]:
-    f = ForgeInfo[GitHubClient](remote)
+@t.final
+class GitHubInfo(ForgeInfo[GitHubClient]):
+    def __init__(self, remote: str):
+        super().__init__(remote)
 
-    if f.remote_url.scheme in {"http", "https"}:
-        f.forge_url = f.remote_url.copy_with(path=None)
-    else:
-        f.forge_url = f.remote_url.copy_with(
-            scheme="https", username=None, port=None, path=None
+        if self.remote_url.scheme in {"http", "https"}:
+            self.forge_url = self.remote_url.copy_with(path=None)
+        else:
+            self.forge_url = self.remote_url.copy_with(
+                scheme="https", username=None, port=None, path=None
+            )
+        self.client = GitHubClient(self.forge_url)
+
+        if match := re.match("^/([^/]+?/[^/]+?)(\\.git)?$", self.remote_url.path):
+            self.project_id = match.group(1)
+        else:
+            raise ValueError(
+                f"Invalid GitHub remote URL format: {self.remote_url}. Expected format: owner/repo"
+            )
+
+        repo_info = _get_repo_info(self.client, self.project_id)
+        self.repo_id = repo_info["id"]
+        self.repo_owner = repo_info["owner"]["login"]
+        self.repo_name = repo_info["name"]
+        self.default_merge_target = (
+            repo_info["defaultBranchRef"]["name"] or git.get_merge_target()
         )
-    f.client = GitHubClient(f.forge_url)
 
-    if match := re.match("^/([^/]+?/[^/]+?)(\\.git)?$", f.remote_url.path):
-        f.project_id = match.group(1)
-    else:
-        raise ValueError(
-            f"Invalid GitHub remote URL format: {f.remote_url}. Expected format: owner/repo"
-        )
 
-    repo_info = _get_repo_info(f.client, f.project_id)
-    f.default_merge_target = (
-        repo_info["defaultBranchRef"]["name"] or git.get_merge_target()
-    )
-
-    return f
+def get_forge_info(remote: str) -> GitHubInfo:
+    return GitHubInfo(remote)
 
 
 def _get_repo_info(client: GitHubClient, project_id: str) -> dict[str, t.Any]:

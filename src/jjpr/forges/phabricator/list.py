@@ -2,7 +2,7 @@ import logging
 import typing as t
 
 from ...utils import cr
-from .lib import client, info, util
+from .lib import info, util
 
 log = logging.getLogger(__name__)
 
@@ -24,9 +24,7 @@ def list_cmd(remote: str) -> list[cr.CodeReview]:
     return [util.parse_cr(rev, checks_by_diff, unresolved_by_rev) for rev in revs]
 
 
-def _my_open_crs(
-    forge_info: info.ForgeInfo[client.PhabricatorClient],
-) -> list[dict[str, t.Any]]:
+def _my_open_crs(forge_info: info.PhabricatorInfo) -> list[dict[str, t.Any]]:
     myPHID = forge_info.client.call("user.whoami")["phid"]
     revs = forge_info.client.call(
         "differential.revision.search",
