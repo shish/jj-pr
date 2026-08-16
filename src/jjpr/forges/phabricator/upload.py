@@ -29,7 +29,7 @@ def upload_cmd(
 
 
 def _push_one(
-    forge_info: info.ForgeInfo[client.PhabricatorClient],
+    forge_info: info.PhabricatorInfo,
     change_id: jj.ChangeId,
     draft: bool = False,
     message: str | None = None,
@@ -110,7 +110,7 @@ def _get_parent_phids(
 
 def _push_change_to_differential_via_subprocess(
     client: client.PhabricatorClient,
-    forge_info: info.ForgeInfo[client.PhabricatorClient],
+    forge_info: info.PhabricatorInfo,
     change_id: jj.ChangeId,
     pre_commit: bool = True,
 ) -> client.PhId:
@@ -130,7 +130,7 @@ def _push_change_to_differential_via_subprocess(
 
 def _push_change_to_differential_natively(
     client: client.PhabricatorClient,
-    forge_info: info.ForgeInfo[client.PhabricatorClient],
+    forge_info: info.PhabricatorInfo,
     change_id: jj.ChangeId,
     pre_commit: bool = True,
 ) -> client.PhId:

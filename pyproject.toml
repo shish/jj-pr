@@ -54,3 +54,8 @@ markers = [
     "phabricator: marks tests as Phabricator forge tests",
     "demo: marks tests as Demo forge tests",
 ]
+
+[tool.basedpyright]
+reportUnusedCallResult = false
+reportAny = false
+reportImplicitStringConcatenation = false

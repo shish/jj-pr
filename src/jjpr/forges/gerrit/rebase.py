@@ -3,7 +3,7 @@ import logging
 import httpx
 
 from ...utils import jj
-from .lib import client, info
+from .lib import info
 
 log = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def rebase_cmd(
 
 
 def _get_gerrit_branch(
-    forge_info: info.ForgeInfo[client.GerritClient], root: jj.ChangeId, remote: str
+    forge_info: info.GerritInfo, root: jj.ChangeId, remote: str
 ) -> str | None:
     """Return '{branch}@{remote}' for the given Gerrit Change-Id, or None if not found."""
     try:

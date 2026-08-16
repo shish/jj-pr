@@ -17,7 +17,7 @@ class ForgeInfo(t.Generic[TClient]):
     remote_url: httpx.URL = field(init=False)
     forge_url: httpx.URL = field(init=False)
     project_id: str = field(default="unknown")
-    default_merge_target: str | None = field(default=None)
+    default_merge_target: str = field(default="main")
     _client: TClient | None = field(default=None, init=False)
 
     def __post_init__(self):

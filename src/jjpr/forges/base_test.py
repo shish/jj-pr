@@ -17,7 +17,7 @@ class TestForgeInfo(TestCase):
         assert f.remote_url == "https://example.com/dummy.git"
         assert f.forge_url == "https://example.com/dummy.git"
         assert f.project_id == "unknown"
-        assert f.default_merge_target is None
+        assert f.default_merge_target == "main"
 
     def test_without_client(self) -> None:
         with mock.patch.object(git, "get_remote_url", return_value=_REMOTE_URL):
