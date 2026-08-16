@@ -209,6 +209,18 @@ class TestChangeId:
         with pytest.raises(ValueError):
             jj.change_id("trunk()..@")
 
+    def test_divergence(self, repo_with_commits: Path):
+        change_id = jj.change_id("@")
+        original_commit = jj.commit_id(change_id)
+        Path("new_file.txt").write_text("This is a new file.")
+        jj.describe(jj.ChangeId("@"), "First variant")
+
+        jj.edit(jj.ChangeId(original_commit))
+        Path("new_file.txt").write_text("This is a new file?")
+        jj.describe(jj.ChangeId("@"), "Second variant")
+
+        assert jj.change_id("@") == f"{change_id}/0", jj.run("log")
+
 
 class TestClosestWork:
     def test_multiple_commits(self, repo_with_commits: Path):
