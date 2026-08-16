@@ -13,16 +13,50 @@ def upload_cmd(
     message: str | None = None,
     pre_commit: bool = True,
 ) -> None:
+    """
+    GitHub's implementation of stacked diffs is somewhat lacking, so
+    we have a somewhat painful process...
+
+    - It's a stack of PRs, not a stack of Changes
+      - For parity with gerrit, we generate one PR per change automatically
+      - Hypothetically we could have a mode where we look at branches, but
+        that's messy
+    - Stacks are append-only
+      - No re-ordering
+      - No removing PRs from a stack
+
+    So in practice, we go through all the changes, see if any have a stack
+    associated with them, delete it, then make a new stack
+    """
     forge_info = info.get_forge_info(remote)
     changes = jj.change_ids(ref) if ref else jj.pushable_stack()
 
-    # Create-or-update change-XYZ bookmarks for each change
+    # Create-or-update "change-XYZ" bookmarks for each change
     change_flags: list[str] = []
     for change_id in changes:
         change_flags.extend(["--change", change_id])
     jj.run("git", "push", *change_flags)
 
-    prs: list[client.PrNum] = []
+    # Check if any of the changes already have an open PR,
+    # and those PRs are part of a stack
+    change_to_existing_pr: dict[jj.ChangeId, client.PrJson] = {}
+    existing_stacks: list[int] = []
+    for change_id in changes:
+        my_branch = jj.change_to_push_bookmark(change_id)
+        if existing_pr := _get_pr(forge_info, my_branch):
+            if existing_pr["stack"] is not None:
+                existing_stacks.append(existing_pr["stack"]["number"])
+            change_to_existing_pr[change_id] = existing_pr
+
+    # Delete any existing stacks
+    # TODO: if all of the existing PRs are in the same stack,
+    # in the same order, and we are only updating the
+    # title/body/diff, then we don't need to re-create it
+    for existing_stack in set(existing_stacks):
+        exec.run("gh", "stack", "unstack", str(existing_stack))
+
+    # Create-or-update PRs for each change
+    new_stack: list[client.PrNum] = []
     for change_id in changes:
         my_branch = jj.change_to_push_bookmark(change_id)
         parent_id = jj.change_id(jj.revset(f"{change_id}-"))
@@ -31,14 +65,17 @@ def upload_cmd(
         else:
             base_branch = jj.change_to_push_bookmark(parent_id)
 
-        if existing_pr := _get_pr(forge_info, my_branch):
-            prs.append(
+        if existing_pr := change_to_existing_pr.get(change_id):
+            new_stack.append(
                 _update_pr(forge_info, change_id, existing_pr, base_branch, message)
             )
         else:
-            prs.append(_create_pr(forge_info, change_id, my_branch, base_branch, draft))
+            new_stack.append(
+                _create_pr(forge_info, change_id, my_branch, base_branch, draft)
+            )
 
-    exec.run("gh", "stack", "link", *[str(pr) for pr in prs])
+    # Link the existing and new PRs into a stack
+    exec.run("gh", "stack", "link", *[str(pr) for pr in new_stack])
 
 
 def _get_pr(forge_info: info.GitHubInfo, head_ref: str) -> client.PrJson | None:
@@ -134,12 +171,7 @@ def _update_pr(
 
     changes = {}
     if base_ref != pr["baseRefName"]:
-        if pr["stack"] is not None:
-            log.warning(
-                f"Can't updte base ref for PR #{pr['number']} because it is part of a stack"
-            )
-        else:
-            changes["baseRefName"] = base_ref
+        changes["baseRefName"] = base_ref
     if title != pr["title"]:
         changes["title"] = title
     if body != pr["body"]:
