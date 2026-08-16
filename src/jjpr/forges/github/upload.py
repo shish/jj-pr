@@ -1,6 +1,6 @@
 import logging
 
-from ...utils import exc, git, jj
+from ...utils import exc, exec, git, jj
 from .lib import client, info
 
 log = logging.getLogger(__name__)
@@ -45,6 +45,8 @@ def upload_cmd(
             )
         else:
             prs.append(_create_pr(forge_info, change_id, my_branch, base_branch, draft))
+
+    exec.run("gh", "stack", "link", *[str(pr) for pr in prs])
 
 
 def _get_pr(forge_info: info.GitHubInfo, head_ref: str) -> client.PrJson | None:
