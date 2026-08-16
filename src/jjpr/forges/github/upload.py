@@ -1,8 +1,7 @@
 import logging
-import re
 
-from ...utils import exec, git, jj
-from .lib import info
+from ...utils import exc, git, jj
+from .lib import client, info
 
 log = logging.getLogger(__name__)
 
@@ -14,50 +13,166 @@ def upload_cmd(
     message: str | None = None,
     pre_commit: bool = True,
 ) -> None:
+    push_bookmark_template = jj.config_get("templates.git_push_bookmark")
+    if not push_bookmark_template:
+        raise exc.UserError(
+            "Missing configuration: templates.git_push_bookmark. "
+            "Please set it to a template for the bookmark name to "
+            "use when pushing changes."
+        )
+
     forge_info = info.get_forge_info(remote)
     changes = jj.change_ids(ref) if ref else jj.pushable_stack()
 
-    # if a change in the stack has a branch name that starts with "pr/":
-    branches = [jj.branches_pointing_to(change, prefix="pr/") for change in changes]
-    branches = [list(b)[0] for b in branches if b]
-    if branches:
-        # - advance that branch to the current change
-        # - force-push the branch to the remote
-        pr_branch = branches[-1]
-        log.info(f"Updating existing PR branch: {pr_branch}")
-        with jj.with_new(changes[-1]):
-            jj.bookmark_advance(pr_branch, to=changes[-1])
-            jj.git_push(remote=forge_info.remote, bookmark=pr_branch)
+    # Create-or-update change-XYZ bookmarks for each change
+    change_flags: list[str] = []
+    for change_id in changes:
+        change_flags.extend(["--change", change_id])
+    jj.run("git", "push", *change_flags)
+
+    prs: list[client.PrNum] = []
+    for change_id in changes:
+        my_branch = jj.change_info(change_id, push_bookmark_template)
+        parent_id = jj.change_id(jj.revset(f"{change_id}-"))
+        if jj.change_info(parent_id, "self.immutable()") == "true":
+            base_branch = git.get_merge_target(remote)
+        else:
+            base_branch = jj.change_info(parent_id, push_bookmark_template)
+
+        if existing_pr := _get_pr(forge_info, my_branch):
+            prs.append(
+                _update_pr(forge_info, change_id, existing_pr, base_branch, message)
+            )
+        else:
+            prs.append(_create_pr(forge_info, change_id, my_branch, base_branch, draft))
+
+
+def _get_pr(forge_info: info.GitHubInfo, head_ref: str) -> client.PrJson | None:
+    query = """
+      query GetPullRequestByHeadRef($owner: String!, $name: String!, $headRef: String!, $states: [PullRequestState!]) {
+        repository(owner: $owner, name: $name) {
+          pullRequests(headRefName: $headRef, states: $states, first: 1) {
+            nodes {
+              number
+              title
+              body
+              state
+              stack {
+                id
+                number
+                baseRefName
+              }
+              headRefName
+              baseRefName
+              headRepository {
+                id
+                name
+              }
+              headRepositoryOwner {
+                id
+                login
+                ...on User {name}
+              }
+              isCrossRepository
+              maintainerCanModify
+              id
+            }
+          }
+        }
+      }
+    """
+    variables = {
+        "owner": forge_info.repo_owner,
+        "name": forge_info.repo_name,
+        "headRef": head_ref,
+        "states": ["OPEN"],
+    }
+    result = forge_info.client.graphql(query, variables)
+    pr_nodes = result["repository"]["pullRequests"]["nodes"]
+    return pr_nodes[0] if pr_nodes else None
+
+
+def _create_pr(
+    forge_info: info.GitHubInfo,
+    change_id: jj.ChangeId,
+    head_ref: str,
+    base_ref: str,
+    draft: bool,
+) -> client.PrNum:
+    descr = jj.change_info(change_id, "self.description()")
+    title, body = descr.split("\n", 1) if "\n" in descr else (descr, "")
+
+    result = forge_info.client.graphql(
+        """
+          mutation CreatePullRequest($input: CreatePullRequestInput!) {
+            createPullRequest(input: $input) {
+              pullRequest {
+                number
+              }
+            }
+          }
+        """,
+        {
+            "input": {
+                "repositoryId": forge_info.repo_id,
+                "headRefName": head_ref,
+                "baseRefName": base_ref,
+                "title": title,
+                "body": body,
+                "draft": draft,
+            }
+        },
+    )
+    pr = result["createPullRequest"]["pullRequest"]
+    print(f"Created pull request #{pr['number']} for {head_ref} -> {base_ref}")
+    return pr["number"]
+
+
+def _update_pr(
+    forge_info: info.GitHubInfo,
+    change_id: jj.ChangeId,
+    pr: client.PrJson,
+    base_ref: str,
+    message: str | None,
+) -> client.PrNum:
+    descr = jj.change_info(change_id, "self.description()")
+    title, body = descr.split("\n", 1) if "\n" in descr else (descr, "")
+
+    changes = {}
+    if base_ref != pr["baseRefName"]:
+        if pr["stack"] is not None:
+            log.warning(
+                f"Can't updte base ref for PR #{pr['number']} because it is part of a stack"
+            )
+        else:
+            changes["baseRefName"] = base_ref
+    if title != pr["title"]:
+        changes["title"] = title
+    if body != pr["body"]:
+        changes["body"] = body
+
+    if changes:
+        result = forge_info.client.graphql(
+            """
+            mutation UpdatePullRequest($input: UpdatePullRequestInput!) {
+                updatePullRequest(input: $input) {
+                    pullRequest {
+                        number
+                    }
+                }
+            }
+            """,
+            {"input": {"pullRequestId": pr["id"], **changes}},
+        )
+        updated_pr = result["updatePullRequest"]["pullRequest"]
+
+        # TODO: if the contents of the PR have changed, add the message as a comment
+        # (we don't want to add a comment every time, because sometimes we only
+        # update a single commit in a stack)
+        # if message is not None:
+        #    ...
+
+        print(f"Updated PR #{updated_pr['number']}")
     else:
-        # - create a new branch named "pr/<sanitized-title>" where
-        #   <sanitized-title> is a name based on the description of
-        #   the last change in the stack
-        # - push that branch to the remote
-        # - create a PR on GitHub with the new branch as the source
-        #   and the merge target as the destination
-        description = jj.description_of(changes[-1])
-        if not description:
-            raise ValueError(f"No description found for change {changes[-1]}")
-        title = description.splitlines()[0]
-        sanitized_title = re.sub(r"[^a-zA-Z0-9\-]+", "-", title).strip("-").lower()
-        pr_branch = git.unique_branch_name(f"pr/{sanitized_title}")
-        log.info(f"Creating new PR branch: {pr_branch}")
-        with jj.with_new(changes[-1]):
-            jj.bookmark_create(pr_branch, r=changes[-1])
-            jj.git_push(remote=forge_info.remote, bookmark=pr_branch)
-            base = git.get_merge_target()
-            args = [
-                "gh",
-                "pr",
-                "create",
-                "--fill",
-                "--head",
-                pr_branch,
-                "--base",
-                base,
-            ]
-            if draft:
-                args.append("--draft")
-            if message:
-                args.extend(["-b", message])
-            exec.run(*args)
+        print(f"No changes needed for PR #{pr['number']}")
+    return pr["number"]
