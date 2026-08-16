@@ -109,7 +109,8 @@ def upload_cmd(
         new_stack.append(pr["number"])
 
     # Link the existing and new PRs into a stack
-    exec.run("gh", "stack", "link", *[str(pr) for pr in new_stack])
+    if len(new_stack) > 1:
+        exec.run("gh", "stack", "link", *[str(pr) for pr in new_stack])
 
 
 def _get_pr(forge_info: info.GitHubInfo, head_ref: str) -> UploadPr | None:
