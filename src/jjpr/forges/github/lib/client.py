@@ -27,7 +27,7 @@ class GitHubClient:
         # Set the token in the environment for use by gh CLI
         os.environ["GITHUB_TOKEN"] = self.token
         self.client = httpx.Client(
-            base_url=base_url,
+            base_url=api_url,
             headers={
                 "Authorization": f"Bearer {self.token}",
                 "Accept": "application/vnd.github.v3+json",
