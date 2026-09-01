@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import typing as t
 
 import httpx
 from typing_extensions import override
@@ -10,6 +11,7 @@ from ....utils import exc, netrc
 log = logging.getLogger(__name__)
 
 
+@t.final
 class GerritClient(httpx.Client):
     """Custom httpx.Client for Gerrit.
 

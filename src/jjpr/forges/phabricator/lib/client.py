@@ -18,6 +18,7 @@ class PhabricatorException(Exception):
     """Exception raised for errors returned by the Phabricator API."""
 
 
+@t.final
 class PhabricatorClient:
     """Custom client for Phabricator.
 
