@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: run forges
         run: docker compose up --wait
-      - uses: astral-sh/setup-uv@v9.0.0
+      - uses: astral-sh/setup-uv@v10.0.1
       - name: Install Jujutsu
         run: |
           wget -qO- https://github.com/jj-vcs/jj/releases/download/v0.42.0/jj-v0.42.0-x86_64-unknown-linux-musl.tar.gz | tar xz
@@ -24,19 +24,19 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9.0.0
+      - uses: astral-sh/setup-uv@v10.0.1
       - run: uv run ruff format --check --diff --output-format=github
 
   lint:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9.0.0
+      - uses: astral-sh/setup-uv@v10.0.1
       - run: uv run ruff check --output-format=github
 
   types:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v9.0.0
+      - uses: astral-sh/setup-uv@v10.0.1
       - run: uv run ty check --output-format=github
