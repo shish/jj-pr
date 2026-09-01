@@ -20,8 +20,8 @@ class GitHubClient:
     def __init__(self, base_url: httpx.URL):
         self.base_url = base_url
         self.token = self._resolve_token(base_url)
-        if base_url.host == "github.com":
-            self.api_url = httpx.URL("https://api.github.com")
+        if base_url.host.endswith(("github.com", "ghe.com")):
+            self.api_url = base_url.copy_with(host="api." + base_url.host)
         else:
             self.api_url = base_url
         # Set the token in the environment for use by gh CLI

@@ -54,7 +54,7 @@ def _get_forge_from_remote_name(remote: str) -> str | None:
 def _get_forge_from_remote_url(remote: str) -> str | None:
     url = git.get_remote_url(remote)
     domain = url.host.lower() if url.host else ""
-    if "github.com" in domain:
+    if domain.endswith(("github.com", "ghe.com")):
         return "github"
     elif "phab" in domain:
         return "phabricator"
