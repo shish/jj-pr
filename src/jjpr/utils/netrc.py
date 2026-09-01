@@ -9,17 +9,17 @@ def read(hostname: str) -> tuple[str, str] | None:
     try:
         rc = netrc.netrc()
     except (FileNotFoundError, netrc.NetrcParseError) as e:
-        log.warning(f"Could not get creds from netrc file: {e}")
+        log.debug(f"Could not get creds from netrc file: {e}")
         return None
 
     auth = rc.authenticators(hostname)
     if not auth:
-        log.warning(f"No credentials found in netrc for {hostname}")
+        log.debug(f"No credentials found in netrc for {hostname}")
         return None
 
     login, _, password = auth
     if not password:
-        log.warning(f"Empty password in netrc for {hostname}")
+        log.debug(f"Empty password in netrc for {hostname}")
         return None
 
     return (login, password)
