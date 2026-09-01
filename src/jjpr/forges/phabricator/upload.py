@@ -64,7 +64,7 @@ def _push_one(
 
     # If --draft, set that flag
     if draft:
-        data["transactions"].append({"type": "draft", "value": "true"})
+        data["transactions"].append({"type": "draft", "value": True})
 
     # Create-or-update the revision
     revision_data = client.call("differential.revision.edit", **data)
