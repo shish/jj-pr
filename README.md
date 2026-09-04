@@ -1,3 +1,9 @@
+# Getting the "rewrite it in rust" treatment :)
+
+This python code was a proof-of-concept, and the concept has been proven. Now that I have a clearer vision of what I want, effort is being directed into a rust version that could conceivably be merged upstream (or if not, should at least be less-hacky) :)
+
+----------
+
 # JJ Forge Integration
 
 (For GitHub, Gerrit, and Phabricator; it should be easy to add more)
