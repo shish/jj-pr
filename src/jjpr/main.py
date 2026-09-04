@@ -77,7 +77,12 @@ def main(
 @app.command("upload")
 def upload_command(
     ctx: typer.Context,
-    ref: str | None = typer.Argument(None, help="Ref to push"),
+    ref: str | None = typer.Option(
+        None,
+        "-r",
+        "--revision",
+        help="Revision to push",
+    ),
     pre_commit: bool = typer.Option(
         True,
         "--pre-commit/--no-pre-commit",
